@@ -28,7 +28,7 @@ jobs:
                 cd packages/supabase-cli
                 bun run build
 
-            - name: 🏃 Run custom script
+            - name: 🏃 - Run custom script
               run: |
                 cd packages/supabase-cli
                 bun add-shebang.js
