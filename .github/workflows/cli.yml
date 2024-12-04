@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD - CLI
 
 on: [push]
 
@@ -21,16 +21,13 @@ jobs:
                   bun-version: latest
 
             - name: 📥 Install dependencies with Bun (with cache)
-              run: bun install --cwd packages/supabase-kit-cli
+              run: bun install --cwd packages/cli
 
-            - name: 🛠️ Build
-              run: bun run build --cwd packages/supabase-kit-cli
-
-            - name: 🏃 Run custom script
-              run: bun add-shebang.js --cwd packages/supabase-kit-cli
+            - name: 🛠️ Build supabase-cli
+              run:  cd packages/cli/ && bun run build && bun add-shebang.js
 
             - name: 🚀 Publish to npm
               uses: JS-DevTools/npm-publish@v1
               with:
                   token: ${{ secrets.NPM_TOKEN }}
-                  package: packages/supabase-kit-cli
+                  package: packages/cli/package.json

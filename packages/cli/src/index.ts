@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import { getPackageJson } from './common';
 import { InitCommand } from './commands/init';
-import { MigrateCommand } from './commands';
+import { OrmCommand } from './commands';
 import { resolve } from 'node:path';
 import { TypesCommand } from './commands/types';
 
@@ -15,7 +15,7 @@ program.name(pkgJson.name).description('CLI to use @supabase-kit').version(pkgJs
 
 InitCommand(program);
 
-MigrateCommand(program);
+OrmCommand(program);
 
 TypesCommand(program);
 
