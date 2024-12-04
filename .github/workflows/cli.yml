@@ -24,7 +24,7 @@ jobs:
               run: bun install --cwd packages/cli
 
             - name: 🛠️ Build supabase-cli
-              run: bun run build --cwd packages/cli
+              run: bun run dts build --cwd packages/cli
 
             - name: 🏃 - Run custom script
               run: bun add-shebang.js --cwd packages/cli
