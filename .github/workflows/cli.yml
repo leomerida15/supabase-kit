@@ -21,16 +21,20 @@ jobs:
                   bun-version: latest
 
             - name: 📥 Install dependencies with Bun (with cache)
-              run: bun install --cwd packages/supabase-kit-cli
+              run: bun install
 
-            - name: 🛠️ Build
-              run: bun run build --cwd packages/supabase-kit-cli
+            - name: 🛠️ Build supabase-cli
+              run: |
+                cd packages/supabase-cli
+                bun run build
 
             - name: 🏃 Run custom script
-              run: bun add-shebang.js --cwd packages/supabase-kit-cli
+              run: |
+                cd packages/supabase-cli
+                bun add-shebang.js
 
             - name: 🚀 Publish to npm
               uses: JS-DevTools/npm-publish@v1
               with:
                   token: ${{ secrets.NPM_TOKEN }}
-                  package: packages/supabase-kit-cli
+                  package: packages/supabase-cli
