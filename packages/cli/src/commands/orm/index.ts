@@ -8,12 +8,12 @@ import { exec, execSync } from 'node:child_process';
 import { parseToEnv } from './setEnvSupa';
 import { Env } from '../funcs/Env';
 
-export const MigrateCommand = (program: Command) => {
-    const migrate = program.command('migrate').description('manager migrastions and db flow');
+export const OrmCommand = (program: Command) => {
+    const migrate = program.command('orm').description('basic init orm and db flow');
 
     migrate
         .command('init')
-        .description('init migrations flow')
+        .description('init orm db flow')
         .action(() => {
             try {
                 const pkm = getPkm();
@@ -24,54 +24,26 @@ export const MigrateCommand = (program: Command) => {
 
                 pkJson.prisma = {
                     seed: pkm.seed,
-                    import: {
-                        schemas: 'supabase/schemas/**/*.prisma',
-                    },
                     schema: 'supabase/schema.prisma',
                 };
-
-                pkJson.scripts[
-                    'prisma:build'
-                ] = `${pkm.pk} prisma-import --force --output supabase/schema.prisma`;
 
                 PackageJson.set(pkJson);
 
                 if (!existsSync(resolve('supabase', 'schemas')))
                     execSync('mkdir supabase/schemas', { stdio: 'pipe' });
 
-                if (!existsSync(resolve('supabase', 'schemas', 'public'))) {
-                    execSync('mkdir supabase/schemas/public', {
-                        stdio: 'pipe',
-                    });
-                }
-
-                if (!existsSync(resolve('supabase', 'schemas', 'helpers'))) {
-                    execSync('mkdir supabase/schemas/helpers', {
-                        stdio: 'pipe',
-                    });
-                }
-
-                writeFileSync(
-                    resolve('supabase', 'schemas', 'helpers', 'connections.prisma'),
-                    getTemp().connect_helper_schema,
-                );
-
-                execSync(`${pkm.pk} prisma-import --force --output supabase/schema.prisma`, {
-                    stdio: 'pipe',
-                });
-
                 if (!existsSync(resolve('supabase', 'seeds')))
                     execSync('mkdir supabase/seeds', { stdio: 'pipe' });
 
                 if (!existsSync(resolve('supabase', 'seeds', 'index.ts')))
-                    writeFileSync(resolve('supabase', 'seeds', 'index.ts'), '');
+                    writeFileSync(resolve('supabase', 'seeds', 'index.ts'), 'export const Seeds = (async ()=>{})();');
 
                 const stdio = execSync(`${pkm.run} supabase start`, { stdio: 'pipe' });
 
                 const supaEnvs = parseToEnv(stdio.toString());
 
-                supaEnvs['DATABASE_URL'] = supaEnvs['DB_URL'];
-                supaEnvs['DIRECT_URL'] = supaEnvs['DB_URL'];
+                supaEnvs.set('DATABASE_URL', supaEnvs.get('DB_URL')!);
+                supaEnvs.set('DIRECT_URL', supaEnvs.get('DB_URL')!);
 
                 Env.set(supaEnvs);
             } catch (error) {

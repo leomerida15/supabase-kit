@@ -43,12 +43,12 @@ export class Env {
         return undefined;
     }
 
-    static set(obj: Record<string, string>) {
+    static set(obj: Map<string, string>) {
         const envPath = resolve('.env');
 
         const envFile = existsSync(envPath) ? readFileSync(envPath, 'utf-8') : '';
 
-        const NotExistingENVS = Object.entries(obj)
+        const NotExistingENVS = Array.from(obj.entries())
             .filter(
                 ([k]) =>
                     !envFile
@@ -64,9 +64,9 @@ export class Env {
 
                 const [k] = line.split('=');
 
-                if (!obj[k]) return line;
+                if (!obj.has(k)) return line;
 
-                return `${k}='${obj[k]}'`;
+                return `${k}='${obj.get(k)}'`;
             })
             .concat(envFile.includes('# supabase local envs') ? [] : ['# supabase local envs'])
             .concat(NotExistingENVS)
