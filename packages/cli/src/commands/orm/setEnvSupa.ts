@@ -25,5 +25,5 @@ export function parseToEnv(text: string) {
         })
         .filter(Boolean);
 
-    return Object.fromEntries(envVariables);
+    return new Map(envVariables);
 }
