@@ -25,8 +25,7 @@ jobs:
 
             - name: 🛠️ Build supabase-cli
               run: |
-                cd packages/supabase-cli
-                bun run build
+                cd packages/supabase-cli -- bun run build
 
             - name: 🏃 - Run custom script
               run: |
