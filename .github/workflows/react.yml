@@ -1,6 +1,9 @@
 name: CI/CD - react
 
-on: [push]
+on:
+  push:
+    branches:
+      - react
 
 jobs:
   build:
