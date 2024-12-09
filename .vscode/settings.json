@@ -1,0 +1,87 @@
+{
+    // editor
+    "editor.bracketPairColorization.enabled": true,
+    "editor.linkedEditing": true,
+    // "editor.fontFamily": "Fira Code",
+    "editor.fontLigatures": true,
+    // Set the default
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.cursorBlinking": "phase",
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+
+    "material-icon-theme.activeIconPack": "react",
+    "material-icon-theme.hidesExplorerArrows": false,
+    "material-icon-theme.files.associations": {
+        "route.ts": "routing",
+        "page.tsx": "Exe",
+        "prisma.config.ts": "tsconfig",
+        "prisma.config.js": "jsconfig",
+        ".bumrc": "Bun"
+    },
+    "material-icon-theme.folders.associations": {
+        "Schema": "docs",
+        "Schemas": "docs",
+        "schema": "docs",
+        "schemas": "docs",
+        "Entity": "class",
+        "Entitys": "class",
+        "entity": "class",
+        "entitys": "class",
+        "dto": "interface",
+        "dtos": "interface",
+        "redux": "redux-actions",
+        "queries": "scripts",
+        "query": "scripts",
+        "state": "redux-store",
+        "publics": "public",
+        "files": "docs",
+        "file": "public",
+        "codes": "docs",
+        "enum": "interface",
+        "enums": "interface",
+        "(front)": "client",
+        "(pages)": "views",
+        "(views)": "views",
+        "[...not-found]": "error",
+        "(router)": "routes",
+        "ui": "theme",
+        "lab": "test",
+        "company": "Jinja",
+        "useSupabase": "supabase"
+    },
+    "[prisma]": {
+        "editor.defaultFormatter": "ajmnz.prisma-import"
+    },
+    "[sql]": {
+        "editor.defaultFormatter": "adpyke.vscode-sql-formatter"
+    },
+    "exportall.config.folderListener": [
+        "/app/(front)/utils",
+        "/app/(front)/utils/components/ui",
+        "/app/(front)/utils/components/customs",
+        "/app/(front)/utils/components/customs/CardTitleToBack",
+        "/app/(front)/utils/hooks/store",
+        "/app/(front)/utils/hooks"
+    ],
+    "exportall.config.relExclusion": ["/app/(front)/(views)/auth"],
+    "[css]": {
+        "editor.defaultFormatter": "vscode.css-language-features"
+    },
+    "cSpell.words": ["supabase"],
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "always"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+    }
+}
