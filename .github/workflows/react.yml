@@ -35,11 +35,8 @@ jobs:
       - name: 🛠️ Build
         run: cd packages/supabase-kit-react/ && bun run build
 
-      - name: 🛠️ custom
-        run: cd packages/supabase-kit-react/ && ls -1
-
       - name: 🚀 Publish to npm
         uses: JS-DevTools/npm-publish@v1
         with:
           token: ${{ secrets.NPM_TOKEN }}
-          package: /packages/supabase-kit-react/package.json
+          package: packages/supabase-kit-react/package.json
