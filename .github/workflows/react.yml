@@ -1,4 +1,4 @@
-name: CI/CD - react
+, ame: CI/CD - react
 
 on:
   push:
@@ -39,4 +39,4 @@ jobs:
         uses: JS-DevTools/npm-publish@v1
         with:
           token: ${{ secrets.NPM_TOKEN }}
-          package: packages/supabase-kit-react/package.json
+          package: ./packages/supabase-kit-react/package.json
