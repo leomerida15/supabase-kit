@@ -56,10 +56,8 @@ jobs:
       - name: 🚀 Publish to npm
         run: |
           if [ -f packages/supabase-kit-react/package.json ]; then
-            npx npm-publish --package packages/supabase-kit-react/package.json
+            npx npm-publish --package packages/supabase-kit-react/package.json --token ${{ secrets.NPM_TOKEN }}
           else
             echo "package.json not found!"
             exit 1
           fi
-        with:
-          token: ${{ secrets.NPM_TOKEN }}
