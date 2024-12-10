@@ -54,7 +54,13 @@ jobs:
           fi
 
       - name: 🚀 Publish to npm
-        uses: JS-DevTools/npm-publish@v1
+        run: |
+          if [ -f packages/supabase-kit-react/package.json ]; then
+            JS-DevTools/npm-publish@v1
+          else
+            echo "package.json not found!"
+            exit 1
+          fi
         with:
           token: ${{ secrets.NPM_TOKEN }}
           package: packages/supabase-kit-react/package.json
