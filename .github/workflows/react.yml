@@ -24,19 +24,36 @@ jobs:
           bun-version: latest
 
       - name: 📥 Install dependencies with Bun (with cache)
-        run: bun install --cwd packages/supabase-kit-react
+        run: |
+          if [ -d packages/react ]; then
+            ls packages/react
+            bun install --cwd packages/react
+          else
+            echo "Directory packages/react not found!"
+            exit 1
+          fi
 
       - name: 💅 Lint
-        run: cd packages/supabase-kit-react/ && bun lint
+        run: |
+          if [ -d packages/react ]; then
+            echo init && echo list && ls -1 -a && cd packages && ls -1 -a && cd react && echo list && ls -1 -a && bun lint
+          else
+            echo "Directory packages/react not found!"
+            exit 1
+          fi
 
       # - name: 🧪 Test
       #   run: bun test --ci --coverage --max-workers=2
 
       - name: 🛠️ Build
-        run: cd packages/supabase-kit-react/ && bun run build && cd ../..
+        run: cd packages/react/ && bun run build && cd ../..
 
       - name: 🚀 Publish to npm
-        uses: JS-DevTools/npm-publish@v1
-        with:
-          token: ${{ secrets.NPM_TOKEN }}
-          package: packages/supabase-kit-react/package.json
+        run: |
+          ls packages/react
+          if [ -f packages/react/package.json ]; then
+            npx npm-publish --package packages/react/package.json --token ${{ secrets.NPM_TOKEN }}
+          else
+            echo "package.json not found!"
+            exit 1
+          fi
