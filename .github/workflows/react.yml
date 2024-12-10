@@ -33,7 +33,7 @@ jobs:
       #   run: bun test --ci --coverage --max-workers=2
 
       - name: 🛠️ Build
-        run: cd packages/supabase-kit-react/ && bun run build
+        run: cd packages/supabase-kit-react/ && bun run build && cd ../..
 
       - name: 🚀 Publish to npm
         uses: JS-DevTools/npm-publish@v1
