@@ -26,6 +26,7 @@ jobs:
       - name: 📥 Install dependencies with Bun (with cache)
         run: |
           if [ -d packages/supabase-kit-react ]; then
+            ls packages/supabase-kit-react
             bun install --cwd packages/supabase-kit-react
           else
             echo "Directory packages/supabase-kit-react not found!"
