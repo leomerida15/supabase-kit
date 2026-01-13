@@ -27,7 +27,7 @@ jobs:
         run: bun install --cwd packages/cli
 
       - name: 🛠️ Build supabase-cli
-        run: cd packages/cli/ && bun run build && bun add-shebang.js
+        run: cd apps/cli/ && bun run build
 
       - name: 🚀 Publish to npm
         uses: JS-DevTools/npm-publish@v1

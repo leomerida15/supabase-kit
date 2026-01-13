@@ -6,7 +6,7 @@
         "bun": ">=1.3",
         "node": ">=20"
     },
-    "version": "1.0.0",
+    "version": "0.4.0",
     "name": "@supabase-kit/cli",
     "bin": {
         "supa-kit": "dist/index.js"
