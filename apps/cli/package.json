@@ -6,7 +6,7 @@
         "node": ">=20"
     },
     "version": "0.4.0",
-    "name": "@leomerida15/supabase-kit-cli",
+    "name": "@supabase-kit/cli",
     "publishConfig": {
         "access": "public"
     },
