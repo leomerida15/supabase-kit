@@ -6,7 +6,7 @@
     "main": "./dist/index.js",
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
-    "name": "@supabase-kit/cli",
+    "name": "@supabase-kit/diff",
     "author": {
         "name": "leomerida15",
         "email": "dimasmerida15@gmail.com",
