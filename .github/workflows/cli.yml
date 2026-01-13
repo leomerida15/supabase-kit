@@ -3,7 +3,7 @@ name: CI/CD - CLI
 on:
   push:
     branches:
-      - cli
+      - cli/main
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
           bun-version: latest
 
       - name: 📥 Install dependencies with Bun (with cache)
-        run: bun install --cwd packages/cli
+        run: bun install --cwd apps/cli
 
       - name: 🛠️ Build supabase-cli
         run: cd apps/cli/ && bun run build
@@ -33,4 +33,4 @@ jobs:
         uses: JS-DevTools/npm-publish@v1
         with:
           token: ${{ secrets.NPM_TOKEN }}
-          package: packages/cli/package.json
+          package: apps/cli/package.json
