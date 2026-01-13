@@ -1,0 +1,59 @@
+{
+  "entornos": {
+    "dev": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "dev",
+      "user": "dev",
+      "ssl": true
+    },
+    "qa": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "qa",
+      "user": "qa",
+      "ssl": true
+    }
+  },
+  "comparaciones": {
+    "dev-to-qa": {
+      "sourceClient": "dev",
+      "targetClient": "qa",
+      "compareOptions": {
+        "outputDirectory": "./patches",
+        "author": null,
+        "getAuthorFromGit": false,
+        "schemaCompare": {
+          "namespaces": [],
+          "enableExtensions": true,
+          "enableEnums": true,
+          "enableTypes": true,
+          "enableSequences": true,
+          "enableTables": true,
+          "enableViews": true,
+          "enableMaterializedViews": true,
+          "enableFunctions": true,
+          "enableAggregates": true,
+          "enableForeignKeys": true,
+          "enableRLSPolicies": true,
+          "enableTriggers": true,
+          "dropMissingTable": false,
+          "dropMissingView": false,
+          "dropMissingFunction": false,
+          "dropMissingAggregate": false,
+          "dropMissingRLSPolicy": false,
+          "roles": []
+        },
+        "dataCompare": {
+          "enable": false,
+          "tables": []
+        }
+      },
+      "migrationOptions": {
+        "patchesDirectory": "./patches",
+        "historyTableName": "pg_diff_history",
+        "historyTableSchema": "public"
+      }
+    }
+  }
+}

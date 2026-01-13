@@ -1,0 +1,25 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        // Type checking only - no emit
+        "noEmit": true,
+
+        // Type checking settings
+        "strict": true,
+        "skipLibCheck": true,
+        "lib": ["ESNext"],
+        "types": ["bun"],
+
+        // Module resolution
+        "module": "ESNext",
+        "target": "ESNext",
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": false,
+        "moduleDetection": "force",
+
+        // Additional settings
+        "allowJs": true
+    },
+    "include": ["index.ts", "src/**/*"],
+    "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "bunpack.build.ts"]
+}

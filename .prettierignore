@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# Documentation
+*.md
+*.mdx
+README.md
+CHANGELOG.md
+LICENSE
+
+# Data files
+*.yaml
+*.yml
+*.json.lock
+*.lock
+package-lock.json
+bun.lockb
+yarn.lock
+
+# Generated files
+*.generated.ts
+*.generated.js
+database-generated.local.type.ts
+
+# Config files (optional, descomenta si quieres excluirlos)
+# tsconfig.json
+# .eslintrc.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Supabase
+supabase/types/
+supabase/.temp/
+
+# Old code (legacy)
+old/
+
+# Context documentation
+context/*.md
+docs/*.md
+
+# Environment
+.env
+.env.local
+.env.*.local
+

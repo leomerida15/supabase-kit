@@ -1,0 +1,43 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        // Override noEmit to enable declaration generation
+        "noEmit": false,
+
+        // Generate TypeScript declarations
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "declarationMap": false,
+
+        // Output configuration
+        "outDir": "./dist",
+        "rootDir": ".",
+
+        // Module resolution - use nodeNext for better declaration generation
+        // After transforming imports, we can use standard ESM resolution
+        "module": "ESNext",
+        "target": "ESNext",
+
+        // After transformation, imports won't have .js extension
+        "allowImportingTsExtensions": false,
+        "verbatimModuleSyntax": false,
+
+        // Type checking - be more lenient for declaration generation
+        "skipLibCheck": true,
+
+        // Continue generating declarations even with errors
+        // This allows partial type generation while fixing issues
+        "noEmitOnError": false,
+
+        // Preserve strict settings from base
+        "strict": true,
+        "lib": ["ESNext"],
+        "types": ["bun"],
+
+        // Additional settings for better module resolution
+        "allowJs": true,
+        "moduleDetection": "force"
+    },
+    "include": ["index.ts", "src/**/*"],
+    "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "bunpack.build.ts"]
+}

@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    // Base TypeScript configuration
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": false,
+    "allowJs": true,
+    "jsx": "react-jsx",
+
+    // Type checking
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    // Path aliases for monorepo
+    "baseUrl": ".",
+    "paths": {
+      "@pkg/*": ["./packages/*/src", "./packages/*"],
+      "@app/*": ["./apps/*/src", "./apps/*"]
+    }
+  },
+  "include": [],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}
