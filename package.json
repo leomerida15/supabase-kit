@@ -1,5 +1,5 @@
 {
-  "name": "supa-kit",
+  "name": "@supabase-kit",
   "version": "1.0.0",
   "dependencies": {
     "zod": "^4.3.5"

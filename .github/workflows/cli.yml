@@ -1,0 +1,36 @@
+name: CI/CD - CLI
+
+on:
+  push:
+    branches:
+      - cli
+
+jobs:
+  build:
+    name: Build, lint, and test on ${{ matrix.os }}
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - name: ❇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: 📥 Install dependencies with Bun (with cache)
+        run: bun install --cwd packages/cli
+
+      - name: 🛠️ Build supabase-cli
+        run: cd packages/cli/ && bun run build && bun add-shebang.js
+
+      - name: 🚀 Publish to npm
+        uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/cli/package.json
