@@ -36,6 +36,8 @@ export class SchemaComparatorService {
 		const { source, target } = params;
 		const scripts: string[] = [];
 
+		// Contar schemas que se van a crear
+		const schemasToCreate: string[] = [];
 		for (const schemaName in source) {
 			const sourceSchema = source[schemaName];
 			const targetSchema = target[schemaName];
@@ -44,10 +46,31 @@ export class SchemaComparatorService {
 				continue;
 			}
 
-			// Solo generar script si el schema no existe en target
 			if (!targetSchema) {
+				schemasToCreate.push(schemaName);
+			}
+		}
+
+		// Agregar comentario de inicio si hay schemas para crear
+		if (schemasToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push(`-- SCHEMAS: Start (${schemasToCreate.length} schema(s) to create)\n`);
+			scripts.push('-- ============================================\n');
+		}
+
+		// Generar scripts CREATE para schemas que existen en source pero no en target
+		for (const schemaName of schemasToCreate) {
+			const sourceSchema = source[schemaName];
+			if (sourceSchema) {
 				scripts.push(generateCreateSchemaScript(sourceSchema.name, sourceSchema.owner || undefined));
 			}
+		}
+
+		// Agregar comentario de fin si se crearon schemas
+		if (schemasToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push('-- SCHEMAS: End\n');
+			scripts.push('-- ============================================\n');
 		}
 
 		return scripts;

@@ -41,6 +41,8 @@ export class ExtensionComparatorService {
 		const { source, target } = params;
 		const scripts: string[] = [];
 
+		// Contar extensiones que se van a crear
+		const extensionsToCreate: string[] = [];
 		for (const extensionName in source) {
 			const sourceExtension = source[extensionName];
 			const targetExtension = target[extensionName];
@@ -49,8 +51,22 @@ export class ExtensionComparatorService {
 				continue;
 			}
 
-			// Solo generar script si la extensión no existe en target
 			if (!targetExtension) {
+				extensionsToCreate.push(extensionName);
+			}
+		}
+
+		// Agregar comentario de inicio si hay extensiones para crear
+		if (extensionsToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push(`-- EXTENSIONS: Start (${extensionsToCreate.length} extension(s) to create)\n`);
+			scripts.push('-- ============================================\n');
+		}
+
+		// Generar scripts CREATE para extensiones que existen en source pero no en target
+		for (const extensionName of extensionsToCreate) {
+			const sourceExtension = source[extensionName];
+			if (sourceExtension) {
 				let script = generateCreateExtensionScript(sourceExtension.name);
 
 				// Agregar advertencia si la extensión no tiene versión (puede no estar disponible)
@@ -61,6 +77,13 @@ export class ExtensionComparatorService {
 
 				scripts.push(script);
 			}
+		}
+
+		// Agregar comentario de fin si se crearon extensiones
+		if (extensionsToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push('-- EXTENSIONS: End\n');
+			scripts.push('-- ============================================\n');
 		}
 
 		return scripts;

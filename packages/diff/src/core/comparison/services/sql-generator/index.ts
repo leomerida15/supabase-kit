@@ -12,9 +12,13 @@ export {
 	generateCreateSequenceScript,
 	generateCreateViewScript,
 	generateCreateMaterializedViewScript,
+	normalizeViewDefinition,
+	normalizeRLSPolicyDefinition,
+	normalizeRLSPolicyRoles,
 	generateCreateFunctionScript,
 	generateCreateAggregateScript,
 	generateCreateTableScriptBasic,
+	generateCreateTableScript,
 	generateCreateForeignKeyScript,
 	generateCreateRLSPolicyScript,
 	generateCreateTriggerScript,
@@ -24,6 +28,11 @@ export {
 	generateDropFunctionScript,
 	generateDropAggregateScript,
 	generateDropRLSPolicyScript,
+	generateAddColumnScript,
+	generateDropColumnScript,
+	generateAlterColumnTypeScript,
+	generateAlterColumnNullableScript,
+	generateAlterColumnDefaultScript,
 } from './sql-generator.utils.js';
 
 export {

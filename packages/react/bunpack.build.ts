@@ -8,20 +8,20 @@ console.time(timetaken);
 
 // Build the main bundle
 Bun.build({
-    entrypoints: ['./src/index.ts'],
-    outdir: './dist',
+    minify: true, 
     format: 'esm',
-    minify: true,
-    sourcemap: 'external',
-    target: 'browser',
-    // Optimizations for smallest bundle size
+    outdir: './dist',
     splitting: false,
-    // External dependencies
-    external: ['react', 'react-dom', '@supabase/supabase-js', '@tanstack/react-query'],
+    target: 'browser',
+    sourcemap: 'external',
+    entrypoints: ['./src/index.ts'],
+    // Optimizations for smallest bundle size
     // Define environment
     define: {
         'process.env.NODE_ENV': '"production"',
     },
+    // External dependencies
+    external: ['react', 'react-dom', '@supabase/supabase-js', '@tanstack/react-query'],
 })
     .then(() => {
         console.log('✅ Main bundle built successfully');

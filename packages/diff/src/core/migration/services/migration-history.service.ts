@@ -2,7 +2,7 @@
  * Servicio para gestionar la tabla de historial de migraciones.
  *
  * Proporciona funcionalidad para preparar y consultar la tabla
- * de historial de migraciones.
+ * de historial de migraciones usando la estructura de Supabase.
  *
  * @module core/migration/services/migration-history
  */
@@ -50,10 +50,20 @@ export class MigrationHistoryService {
 		const { connection, config } = params;
 		const { migrationHistory } = config;
 
-		// Generar script CREATE TABLE IF NOT EXISTS
-		const createTableScript = this.generateHistoryTableScript(migrationHistory);
-
 		try {
+			// Primero, crear el schema si no existe
+			const createSchemaScript = `
+				CREATE SCHEMA IF NOT EXISTS "${migrationHistory.tableSchema}";
+			`;
+
+			await this.databaseAdapter.query({
+				connection,
+				sql: createSchemaScript,
+			});
+
+			// Luego, generar y ejecutar el script CREATE TABLE IF NOT EXISTS
+			const createTableScript = this.generateHistoryTableScript(migrationHistory);
+
 			await this.databaseAdapter.query({
 				connection,
 				sql: createTableScript,
@@ -67,94 +77,96 @@ export class MigrationHistoryService {
 
 	/**
 	 * Verifica el estado de un patch en la tabla de historial.
+	 * En la estructura de Supabase, si existe el registro = DONE, si no = TO_APPLY
 	 *
 	 * @param params - Parámetros para verificar el estado
-	 * @returns Estado del patch y mensaje de error si aplica
+	 * @returns Estado del patch
 	 */
 	public async checkPatchStatus(params: CheckPatchStatusParams): Promise<PatchStatusResult> {
 		const { connection, patchInfo, config } = params;
 		const { migrationHistory } = config;
 
+		// Consultar solo si existe el registro (estructura Supabase)
 		const query = `
-			SELECT status, last_message
+			SELECT "version"
 			FROM ${migrationHistory.fullTableName}
-			WHERE version = $1 AND name = $2
+			WHERE "version" = $1
 			LIMIT 1
 		`;
 
 		try {
 			const results = await this.databaseAdapter.query<{
-				status: string;
-				last_message: string | null;
+				version: string;
 			}>({
 				connection,
 				sql: query,
-				params: [patchInfo.version, patchInfo.name],
+				params: [patchInfo.version],
 			});
 
 			if (results.length === 0) {
+				// No existe = pendiente de aplicar
 				return {
 					status: PatchStatusEnum.TO_APPLY,
 				};
 			}
 
-			const row = results[0];
-			if (!row) {
-				return {
-					status: PatchStatusEnum.TO_APPLY,
-				};
-			}
+			// Existe = ya aplicada
 			return {
-				status: row.status as PatchStatus,
-				errorMessage: row.last_message || undefined,
+				status: PatchStatusEnum.DONE,
 			};
 		} catch (error) {
-			throw new Error('Failed to check patch status', {
-				cause: error instanceof Error ? error : new Error(String(error)),
-			});
+			// Si hay error (tabla no existe, etc), considerar como pendiente
+			return {
+				status: PatchStatusEnum.TO_APPLY,
+			};
 		}
 	}
 
 	/**
 	 * Agrega un registro a la tabla de historial.
+	 * Usa la estructura de Supabase: version, statements, name
 	 *
 	 * @param params - Parámetros para agregar el registro
 	 * @param params.connection - Conexión a la base de datos
 	 * @param params.patchInfo - Información del patch
 	 * @param params.config - Configuración de migración
+	 * @param params.statements - Array de statements SQL ejecutados (opcional)
 	 */
 	public async addRecordToHistoryTable(params: {
 		connection: DatabaseConnection;
 		patchInfo: PatchInfo;
 		config: MigrationConfig;
+		statements?: string[];
+		author?: string;
 	}): Promise<void> {
-		const { connection, patchInfo, config } = params;
+		const { connection, patchInfo, config, statements, author } = params;
 		const { migrationHistory } = config;
 
+		// Estructura Supabase: version, statements (TEXT[]), name, author
 		const query = `
 			INSERT INTO ${migrationHistory.fullTableName}
-				("version", "name", "status", "last_message", "script", "applied_on")
-			VALUES ($1, $2, $3, $4, $5, $6)
+				("version", "statements", "name", "author")
+			VALUES ($1, $2, $3, $4)
 			ON CONFLICT ("version")
 			DO UPDATE SET
+				"statements" = EXCLUDED."statements",
 				"name" = EXCLUDED."name",
-				"status" = EXCLUDED."status",
-				"last_message" = EXCLUDED."last_message",
-				"script" = EXCLUDED."script",
-				"applied_on" = EXCLUDED."applied_on"
+				"author" = EXCLUDED."author"
 		`;
 
 		try {
+			// postgres.js maneja arrays de JavaScript automáticamente
+			// Si statements es undefined, usar NULL en lugar de array vacío
+			const statementsParam = statements !== undefined && statements.length > 0 ? statements : null;
+
 			await this.databaseAdapter.query({
 				connection,
 				sql: query,
 				params: [
 					patchInfo.version,
-					patchInfo.name,
-					patchInfo.status || PatchStatusEnum.TO_APPLY,
-					'',
-					'',
-					null,
+					statementsParam,
+					patchInfo.name || null,
+					author || null,
 				],
 			});
 		} catch (error) {
@@ -166,13 +178,15 @@ export class MigrationHistoryService {
 
 	/**
 	 * Actualiza un registro en la tabla de historial.
+	 * En Supabase, solo insertamos cuando se completa exitosamente.
+	 * Si hay error, no se guarda nada (o se puede eliminar si ya existe).
 	 *
 	 * @param params - Parámetros para actualizar el registro
 	 * @param params.connection - Conexión a la base de datos
 	 * @param params.patchInfo - Información del patch
 	 * @param params.status - Nuevo estado
-	 * @param params.message - Mensaje (opcional)
-	 * @param params.script - Script ejecutado (opcional)
+	 * @param params.message - Mensaje (opcional, no se usa en Supabase)
+	 * @param params.script - Script ejecutado (opcional, se convierte a statements)
 	 * @param params.config - Configuración de migración
 	 */
 	public async updateRecordToHistoryTable(params: {
@@ -183,62 +197,97 @@ export class MigrationHistoryService {
 		script?: string;
 		config: MigrationConfig;
 	}): Promise<void> {
-		const { connection, patchInfo, status, message, script, config } = params;
+		const { connection, patchInfo, status, script, config } = params;
 		const { migrationHistory } = config;
 
-		const appliedOn = status === PatchStatusEnum.DONE || status === PatchStatusEnum.ERROR ? new Date() : null;
+		// Solo guardar si se completó exitosamente
+		if (status === PatchStatusEnum.DONE) {
+			// En Supabase, el campo statements puede ser NULL o un array
+			// Lo importante es que el registro exista con el version correcto
+			// Guardamos el script completo como un solo statement para evitar problemas
+			// con split(';') que puede dividir incorrectamente (dentro de strings, funciones, etc.)
+			const statements: string[] | null = script && script.trim().length > 0
+				? [script.trim()] // Guardar el script completo como un solo statement
+				: null; // NULL si no hay script
 
-		const query = `
-			UPDATE ${migrationHistory.fullTableName}
-			SET
-				"status" = $1,
-				"last_message" = $2,
-				"script" = $3,
-				"applied_on" = $4
-			WHERE "version" = $5 AND "name" = $6
-		`;
+			// Extraer el autor del script
+			const author = this.extractAuthorFromScript(script);
 
-		try {
-			await this.databaseAdapter.query({
+			// Insertar o actualizar el registro
+			await this.addRecordToHistoryTable({
 				connection,
-				sql: query,
-				params: [
-					status,
-					message || '',
-					script || '',
-					appliedOn,
-					patchInfo.version,
-					patchInfo.name,
-				],
+				patchInfo,
+				config,
+				statements: statements || undefined,
+				author: author ?? undefined,
 			});
-		} catch (error) {
-			throw new Error('Failed to update record in history table', {
-				cause: error instanceof Error ? error : new Error(String(error)),
-			});
+		} else if (status === PatchStatusEnum.ERROR) {
+			// Si hay error, eliminar el registro si existe (para poder reintentar)
+			const deleteQuery = `
+				DELETE FROM ${migrationHistory.fullTableName}
+				WHERE "version" = $1
+			`;
+
+			try {
+				await this.databaseAdapter.query({
+					connection,
+					sql: deleteQuery,
+					params: [patchInfo.version],
+				});
+			} catch (error) {
+				// Ignorar errores al eliminar
+			}
 		}
+		// Para IN_PROGRESS, no hacemos nada (no guardamos estados intermedios)
 	}
 
 	/**
-	 * Genera el script SQL para crear la tabla de historial.
+	 * Extrae el autor del header del script SQL.
+	 * Busca los patrones:
+	 * - Formato nuevo: -- SCRIPT AUTHOR: Nombre
+	 * - Formato viejo: /*** SCRIPT AUTHOR: Nombre **​/
+	 *
+	 * @param script - Script SQL completo
+	 * @returns Nombre del autor o null si no se encuentra
+	 */
+	private extractAuthorFromScript(script?: string): string | null {
+		if (!script) {
+			return null;
+		}
+
+		// Buscar el patrón nuevo: -- SCRIPT AUTHOR: Nombre (hasta el fin de línea)
+		const newFormatMatch = script.match(/--\s*SCRIPT AUTHOR:\s*(.+?)(?:\r?\n|$)/i);
+		if (newFormatMatch && newFormatMatch[1]) {
+			return newFormatMatch[1].trim();
+		}
+
+		// Buscar el patrón viejo: /*** SCRIPT AUTHOR: Nombre ***/
+		const oldFormatMatch = script.match(/\/\*\*\*\s*SCRIPT AUTHOR:\s*([^*]+)\s*\*\*\*\//i);
+		if (oldFormatMatch && oldFormatMatch[1]) {
+			return oldFormatMatch[1].trim();
+		}
+
+		return null;
+	}
+
+	/**
+	 * Genera el script SQL para crear la tabla de historial usando la estructura de Supabase.
 	 *
 	 * @param migrationHistory - Configuración de la tabla de historial
 	 * @returns Script SQL CREATE TABLE
 	 */
 	private generateHistoryTableScript(migrationHistory: MigrationConfig['migrationHistory']): string {
-		const { fullTableName, tableName, primaryKeyName, tableOwner } = migrationHistory;
+		const { fullTableName } = migrationHistory;
 
+		// Estructura de Supabase: version (TEXT PK), statements (TEXT[]), name (TEXT), author (TEXT NOT NULL)
 		return `
 			CREATE TABLE IF NOT EXISTS ${fullTableName} (
-				"version" VARCHAR(17) NOT NULL,
-				"name" VARCHAR NOT NULL,
-				"status" VARCHAR(5) NOT NULL DEFAULT '',
-				"last_message" VARCHAR,
-				"script" VARCHAR NOT NULL DEFAULT '',
-				"applied_on" TIMESTAMP,
-				CONSTRAINT ${primaryKeyName} PRIMARY KEY ("version")
+				"version" TEXT NOT NULL,
+				"statements" TEXT[] NULL,
+				"name" TEXT NULL,
+				"author" TEXT NOT NULL,
+				CONSTRAINT ${migrationHistory.primaryKeyName} PRIMARY KEY ("version")
 			);
-
-			ALTER TABLE ${fullTableName} OWNER TO ${tableOwner};
 		`;
 	}
 }

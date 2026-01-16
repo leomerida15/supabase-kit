@@ -36,6 +36,8 @@ export class EnumComparatorService {
 		const { source, target } = params;
 		const scripts: string[] = [];
 
+		// Contar ENUMs que se van a crear
+		const enumsToCreate: string[] = [];
 		for (const enumKey in source) {
 			const sourceEnum = source[enumKey];
 			const targetEnum = target[enumKey];
@@ -44,12 +46,33 @@ export class EnumComparatorService {
 				continue;
 			}
 
-			// Solo generar script si el ENUM no existe en target
 			if (!targetEnum) {
+				enumsToCreate.push(enumKey);
+			}
+		}
+
+		// Agregar comentario de inicio si hay ENUMs para crear
+		if (enumsToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push(`-- ENUMS: Start (${enumsToCreate.length} enum(s) to create)\n`);
+			scripts.push('-- ============================================\n');
+		}
+
+		// Generar scripts CREATE para ENUMs que existen en source pero no en target
+		for (const enumKey of enumsToCreate) {
+			const sourceEnum = source[enumKey];
+			if (sourceEnum) {
 				scripts.push(
 					generateCreateEnumScript(sourceEnum.schema, sourceEnum.name, sourceEnum.values),
 				);
 			}
+		}
+
+		// Agregar comentario de fin si se crearon ENUMs
+		if (enumsToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push('-- ENUMS: End\n');
+			scripts.push('-- ============================================\n');
 		}
 
 		return scripts;

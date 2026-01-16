@@ -40,13 +40,13 @@ export async function handleLsCommand(): Promise<void> {
 
         // Mostrar entornos
         console.log('🔹 Environments:');
-        if (appInfo.entornos.length === 0) {
+        if (appInfo.environments.length === 0) {
             console.log('   └── (none)\n');
         } else {
-            appInfo.entornos.forEach((envName, index) => {
-                const isLast = index === appInfo.entornos.length - 1;
+            appInfo.environments.forEach((envName, index) => {
+                const isLast = index === appInfo.environments.length - 1;
                 const prefix = isLast ? '└──' : '├──';
-                const env = configFile.entornos[envName];
+                const env = configFile.environments[envName];
 
                 if (!env) {
                     return;
@@ -67,13 +67,13 @@ export async function handleLsCommand(): Promise<void> {
 
         // Mostrar comparaciones
         console.log('🔹 Comparisons:');
-        if (appInfo.comparaciones.length === 0) {
+        if (appInfo.comparisons.length === 0) {
             console.log('   └── (none)\n');
         } else {
-            appInfo.comparaciones.forEach((compName, index) => {
-                const isLast = index === appInfo.comparaciones.length - 1;
+            appInfo.comparisons.forEach((compName, index) => {
+                const isLast = index === appInfo.comparisons.length - 1;
                 const prefix = isLast ? '└──' : '├──';
-                const comp = configFile.comparaciones[compName];
+                const comp = configFile.comparisons[compName];
 
                 if (!comp) {
                     return;

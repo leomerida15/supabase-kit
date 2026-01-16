@@ -9,7 +9,10 @@ export type BuildOutput = Awaited<ReturnType<typeof Bun.build>>;
 
 /**
  * Construye el paquete diff con tipado y minificación.
- *
+ * 
+ * FCt1qzA0j3twaQys
+ * KKWtaBbCPyxL5n5a
+ * 
  * Este build:
  * 1. Compila tipos TypeScript con tsc para generar declaraciones (.d.ts)
  * 2. Compila y minifica JavaScript usando Bun.build con minify: true

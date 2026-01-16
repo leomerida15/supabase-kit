@@ -20,7 +20,8 @@ export interface EnvironmentConfig {
 }
 
 /**
- * Estructura de una comparación.
+ * Estructura de una comparación (como se guarda en JSON).
+ * Usa "schemas" en lugar de "namespaces" para mayor claridad.
  */
 export interface ComparisonConfig {
     /**
@@ -35,8 +36,13 @@ export interface ComparisonConfig {
 
     /**
      * Opciones de comparación.
+     * En el JSON usamos "schemas" en lugar de "namespaces".
      */
-    compareOptions: Config['compareOptions'];
+    compareOptions: Omit<Config['compareOptions'], 'schemaCompare'> & {
+        schemaCompare: Omit<Config['compareOptions']['schemaCompare'], 'namespaces'> & {
+            schemas: string[];
+        };
+    };
 
     /**
      * Opciones de migración.
@@ -49,14 +55,14 @@ export interface ComparisonConfig {
  */
 export interface ApplicationConfigFile {
     /**
-     * Diccionario de entornos (configuraciones de base de datos).
+     * Dictionary of environments (database configurations).
      */
-    entornos: Record<string, EnvironmentConfig>;
+    environments: Record<string, EnvironmentConfig>;
 
     /**
-     * Diccionario de comparaciones (entornos a comparar).
+     * Dictionary of comparisons (environments to compare).
      */
-    comparaciones: Record<string, ComparisonConfig>;
+    comparisons: Record<string, ComparisonConfig>;
 }
 
 /**
@@ -96,23 +102,22 @@ export function loadConfigFile({
 
     if (!existsSync(configPath)) {
         return {
-            entornos: {},
-            comparaciones: {},
+            environments: {},
+            comparisons: {},
         };
     }
 
     const configJson = readFileSync(configPath, 'utf-8');
-    const parsed = JSON.parse(configJson) as ApplicationConfigFile;
+    const parsed = JSON.parse(configJson) as any;
 
-    // Asegurar que la estructura sea correcta
-    if (!parsed.entornos) {
-        parsed.entornos = {};
-    }
-    if (!parsed.comparaciones) {
-        parsed.comparaciones = {};
-    }
+    // Soporte para compatibilidad hacia atrás con nombres en español
+    const environments = parsed.environments ?? parsed.entornos ?? {};
+    const comparisons = parsed.comparisons ?? parsed.comparaciones ?? {};
 
-    return parsed;
+    return {
+        environments,
+        comparisons,
+    };
 }
 
 /**
@@ -138,7 +143,7 @@ export function saveEnvironment({
 
     const configFile = loadConfigFile({ applicationName });
 
-    configFile.entornos[environmentName] = {
+    configFile.environments[environmentName] = {
         ...environmentConfig,
     };
 
@@ -170,14 +175,28 @@ export function saveComparison({
     const configFile = loadConfigFile({ applicationName });
 
     // Validar que los entornos referenciados existan
-    if (!configFile.entornos[comparisonConfig.sourceClient]) {
-        throw new Error(`Entorno source "${comparisonConfig.sourceClient}" no existe`);
+    if (!configFile.environments[comparisonConfig.sourceClient]) {
+        throw new Error(`Source environment "${comparisonConfig.sourceClient}" does not exist`);
     }
-    if (!configFile.entornos[comparisonConfig.targetClient]) {
-        throw new Error(`Entorno target "${comparisonConfig.targetClient}" no existe`);
+    if (!configFile.environments[comparisonConfig.targetClient]) {
+        throw new Error(`Target environment "${comparisonConfig.targetClient}" does not exist`);
     }
 
-    configFile.comparaciones[comparisonName] = comparisonConfig;
+    // Mapear "namespaces" del tipo Config a "schemas" para el JSON
+    const schemaCompare = comparisonConfig.compareOptions.schemaCompare;
+    const { namespaces, ...schemaCompareRest } = schemaCompare;
+    const schemaCompareForJson = {
+        ...schemaCompareRest,
+        schemas: namespaces || [],
+    };
+
+    configFile.comparisons[comparisonName] = {
+        ...comparisonConfig,
+        compareOptions: {
+            ...comparisonConfig.compareOptions,
+            schemaCompare: schemaCompareForJson,
+        },
+    };
 
     const configJson = JSON.stringify(configFile, null, 2);
     writeFileSync(configPath, configJson, 'utf-8');
@@ -201,22 +220,32 @@ export function loadComparison({
 }): Config {
     const configFile = loadConfigFile({ applicationName });
 
-    const comparison = configFile.comparaciones[comparisonName];
+    const comparison = configFile.comparisons[comparisonName];
     if (!comparison) {
-        throw new Error(`Comparación "${comparisonName}" no encontrada en "${applicationName}"`);
+        throw new Error(`Comparison "${comparisonName}" not found in "${applicationName}"`);
     }
 
-    const sourceEnv = configFile.entornos[comparison.sourceClient];
-    const targetEnv = configFile.entornos[comparison.targetClient];
+    const sourceEnv = configFile.environments[comparison.sourceClient];
+    const targetEnv = configFile.environments[comparison.targetClient];
 
     if (!sourceEnv) {
-        throw new Error(`Entorno source "${comparison.sourceClient}" no encontrado`);
+        throw new Error(`Source environment "${comparison.sourceClient}" not found`);
     }
     if (!targetEnv) {
-        throw new Error(`Entorno target "${comparison.targetClient}" no encontrado`);
+        throw new Error(`Target environment "${comparison.targetClient}" not found`);
     }
 
-    return {
+    // Mapear "schemas" del JSON a "namespaces" del tipo Config
+    // También soportamos "namespaces" para compatibilidad hacia atrás
+    const schemaCompare = comparison.compareOptions.schemaCompare as any;
+    const schemas = schemaCompare.schemas ?? schemaCompare.namespaces ?? [];
+    const { schemas: _, namespaces: __, ...schemaCompareRest } = schemaCompare;
+    const schemaCompareMapped = {
+        ...schemaCompareRest,
+        namespaces: schemas || [],
+    };
+
+    const result = {
         sourceClient: {
             ...sourceEnv,
             password: null,
@@ -227,9 +256,14 @@ export function loadComparison({
             password: null,
             applicationName: 'pg-diff-cli',
         },
-        compareOptions: comparison.compareOptions,
+        compareOptions: {
+            ...comparison.compareOptions,
+            schemaCompare: schemaCompareMapped,
+        },
         migrationOptions: comparison.migrationOptions,
     };
+
+    return result;
 }
 
 /**
@@ -241,7 +275,7 @@ export function loadComparison({
  */
 export function listEnvironments({ applicationName }: { applicationName: string }): string[] {
     const configFile = loadConfigFile({ applicationName });
-    return Object.keys(configFile.entornos);
+    return Object.keys(configFile.environments);
 }
 
 /**
@@ -253,7 +287,7 @@ export function listEnvironments({ applicationName }: { applicationName: string 
  */
 export function listComparisons({ applicationName }: { applicationName: string }): string[] {
     const configFile = loadConfigFile({ applicationName });
-    return Object.keys(configFile.comparaciones);
+    return Object.keys(configFile.comparisons);
 }
 
 /**
@@ -282,12 +316,12 @@ export function listApplications(): string[] {
  * @returns Información de la aplicación
  */
 export function getApplicationInfo({ applicationName }: { applicationName: string }): {
-    entornos: string[];
-    comparaciones: string[];
+    environments: string[];
+    comparisons: string[];
 } {
     const configFile = loadConfigFile({ applicationName });
     return {
-        entornos: Object.keys(configFile.entornos),
-        comparaciones: Object.keys(configFile.comparaciones),
+        environments: Object.keys(configFile.environments),
+        comparisons: Object.keys(configFile.comparisons),
     };
 }

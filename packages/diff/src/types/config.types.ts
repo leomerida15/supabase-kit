@@ -158,6 +158,20 @@ export interface SchemaCompare {
 	enableFunctions?: boolean;
 
 	/**
+	 * Si es true, usa verificación manual (IF NOT EXISTS) para funciones en lugar de CREATE OR REPLACE.
+	 * Si es false, usa CREATE OR REPLACE FUNCTION (reemplaza funciones existentes).
+	 * Por defecto: true (verificación manual)
+	 */
+	useManualFunctionCheck?: boolean;
+
+	/**
+	 * Si es true, excluye funciones con lenguajes que requieren permisos de superusuario (c, internal)
+	 * del script SQL generado. Esto evita errores de permisos en entornos como Supabase.
+	 * Por defecto: true (excluir automáticamente)
+	 */
+	excludeSuperuserFunctions?: boolean;
+
+	/**
 	 * Habilita o deshabilita la comparación de agregados.
 	 * Por defecto: true
 	 */

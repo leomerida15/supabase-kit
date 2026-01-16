@@ -36,6 +36,8 @@ export class TypeComparatorService {
 		const { source, target } = params;
 		const scripts: string[] = [];
 
+		// Contar tipos que se van a crear
+		const typesToCreate: string[] = [];
 		for (const typeKey in source) {
 			const sourceType = source[typeKey];
 			const targetType = target[typeKey];
@@ -44,10 +46,31 @@ export class TypeComparatorService {
 				continue;
 			}
 
-			// Solo generar script si el tipo no existe en target
 			if (!targetType) {
+				typesToCreate.push(typeKey);
+			}
+		}
+
+		// Agregar comentario de inicio si hay tipos para crear
+		if (typesToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push(`-- TYPES: Start (${typesToCreate.length} type(s) to create)\n`);
+			scripts.push('-- ============================================\n');
+		}
+
+		// Generar scripts CREATE para tipos que existen en source pero no en target
+		for (const typeKey of typesToCreate) {
+			const sourceType = source[typeKey];
+			if (sourceType) {
 				scripts.push(generateCreateTypeScript(sourceType.schema, sourceType.name, sourceType.type));
 			}
+		}
+
+		// Agregar comentario de fin si se crearon tipos
+		if (typesToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push('-- TYPES: End\n');
+			scripts.push('-- ============================================\n');
 		}
 
 		return scripts;

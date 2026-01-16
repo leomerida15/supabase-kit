@@ -1,397 +1,397 @@
 # Supa-Kit CLI
 
-Herramienta CLI para comparar y migrar bases de datos PostgreSQL mediante patches SQL.
+CLI tool for comparing and migrating PostgreSQL databases using SQL patches.
 
-Hecho con ❤️ por GobernAI LLC y LatamEarth C.A.
+Made with love by GobernAI LLC and LatamEarth C.A.
 
--   https://gobern.ai/
--   https://latamearth.com
+- https://gobern.ai/
+- https://latamearth.com
 
-## Requisitos
+## Requirements
 
--   **Bun** >= 1.3 o **Node.js** >= 20
--   Acceso a bases de datos PostgreSQL (source y target)
+- **Bun** >= 1.3 or **Node.js** >= 20
+- Access to PostgreSQL databases (source and target)
 
-## Instalación
+## Installation
 
-### Instalación global desde npm (recomendado)
+### Global installation from npm (recommended)
 
 ```bash
 npm install -g @supabase-kit/cli
 ```
 
-O usando Bun:
+Or using Bun:
 
 ```bash
 bun add -g @supabase-kit/cli
 ```
 
-### Instalación local desde el código fuente
+### Local installation from source
 
-Si estás trabajando desde el repositorio:
+If you're working from the repository:
 
 ```bash
-# Desde la raíz del monorepo
+# From the monorepo root
 bun install
 
-# Construir el CLI
+# Build the CLI
 cd apps/cli
 bun run build
 ```
 
-Para usar el CLI localmente después de construir:
+To use the CLI locally after building:
 
 ```bash
-# Desde apps/cli
-bun run index.ts diff [subcomando]
+# From apps/cli
+bun run index.ts diff [subcommand]
 
-# O si está instalado globalmente
-supa-kit diff [subcomando]
+# Or if installed globally
+supa-kit diff [subcommand]
 ```
 
-## Uso
+## Usage
 
-### Ejecutar el CLI
+### Running the CLI
 
 ```bash
 supa-kit
 ```
 
-Sin argumentos, el CLI mostrará el mensaje de bienvenida con la lista de comandos disponibles.
+Without arguments, the CLI will display the welcome message with the list of available commands.
 
-### Sintaxis general
+### General syntax
 
 ```bash
-supa-kit diff [subcomando]
+supa-kit diff [subcommand]
 ```
 
-## Comandos
+## Commands
 
-El CLI utiliza `diff` como comando raíz. Todos los comandos están organizados como subcomandos de `diff`:
+The CLI uses `diff` as the root command. All commands are organized as subcommands of `diff`:
 
-| Comando        | Descripción                                       |
-| -------------- | ------------------------------------------------- |
-| `diff`         | Comando raíz - muestra subcomandos disponibles    |
-| `diff add`     | Agregar aplicación, entorno o comparación         |
-| `diff ls`      | Listar aplicaciones, entornos y comparaciones     |
-| `diff compare` | Generar patch SQL (comparar bases de datos)       |
-| `diff migrate` | Ejecutar migraciones (aplicar patches pendientes) |
-| `diff status`  | Ver estado de todos los patches                   |
-| `diff history` | Ver historial de patches aplicados                |
+| Command        | Description                                     |
+| -------------- | ----------------------------------------------- |
+| `diff`         | Root command - shows available subcommands      |
+| `diff add`     | Add application, environment, or comparison     |
+| `diff ls`      | List applications, environments, and comparisons|
+| `diff compare` | Generate SQL patch (compare databases)          |
+| `diff migrate` | Run migrations (apply pending patches)          |
+| `diff status`  | View status of all patches                      |
+| `diff history` | View history of applied patches                 |
 
-### `diff` - Comando raíz
+### `diff` - Root command
 
-Muestra la lista de subcomandos disponibles.
+Displays the list of available subcommands.
 
-**Uso:**
+**Usage:**
 
 ```bash
 supa-kit diff
 ```
 
-Muestra todos los subcomandos disponibles bajo `diff`.
+Shows all available subcommands under `diff`.
 
-### `diff add` - Agregar configuración
+### `diff add` - Add configuration
 
-Permite crear nuevas aplicaciones, entornos y comparaciones.
+Allows creating new applications, environments, and comparisons.
 
-**Uso:**
+**Usage:**
 
 ```bash
 supa-kit diff add
 ```
 
-**Qué hace:**
+**What it does:**
 
--   Permite crear o seleccionar una aplicación
--   Permite agregar nuevos entornos (configuración de conexión a bases de datos)
--   Permite crear comparaciones entre entornos (source y target)
--   Configura opciones de comparación y migración
+- Allows creating or selecting an application
+- Allows adding new environments (database connection configuration)
+- Allows creating comparisons between environments (source and target)
+- Configures comparison and migration options
 
-**Flujo interactivo:**
+**Interactive flow:**
 
-1. Seleccionar o crear aplicación
-2. Elegir entre crear entorno o comparación
-3. Si es entorno: configurar conexión (host, port, database, user, ssl)
-4. Si es comparación: seleccionar entornos source y target, configurar opciones
+1. Select or create application
+2. Choose between creating an environment or comparison
+3. If environment: configure connection (host, port, database, user, ssl)
+4. If comparison: select source and target environments, configure options
 
-### `diff ls` - Listar configuración
+### `diff ls` - List configuration
 
-Muestra información sobre aplicaciones, entornos y comparaciones configuradas.
+Displays information about configured applications, environments, and comparisons.
 
-**Uso:**
+**Usage:**
 
 ```bash
 supa-kit diff ls
 ```
 
-**Qué hace:**
+**What it does:**
 
--   Lista todas las aplicaciones configuradas
--   Permite seleccionar una aplicación para ver detalles
--   Muestra entornos configurados en la aplicación
--   Muestra comparaciones configuradas entre entornos
+- Lists all configured applications
+- Allows selecting an application to view details
+- Shows environments configured in the application
+- Shows comparisons configured between environments
 
-### `diff compare` - Generar patch SQL
+### `diff compare` - Generate SQL patch
 
-Compara dos bases de datos y genera un archivo SQL con las diferencias (patch).
+Compares two databases and generates an SQL file with the differences (patch).
 
-**Uso:**
+**Usage:**
 
 ```bash
 supa-kit diff compare
 ```
 
-**Qué hace:**
+**What it does:**
 
-1. Permite seleccionar una aplicación
-2. Permite seleccionar una comparación configurada
-3. Solicita credenciales de ambas bases de datos (source y target)
-4. Compara los esquemas de ambas bases de datos
-5. Genera un archivo SQL patch con las diferencias
-6. Guarda el patch en el directorio configurado
+1. Allows selecting an application
+2. Allows selecting a configured comparison
+3. Requests credentials for both databases (source and target)
+4. Compares the schemas of both databases
+5. Generates an SQL patch file with the differences
+6. Saves the patch in the configured directory
 
-**Nota:** Los patches se guardan con nombres únicos basados en timestamp para evitar sobrescrituras.
+**Note:** Patches are saved with unique timestamp-based names to avoid overwrites.
 
-### `diff migrate` - Aplicar migraciones
+### `diff migrate` - Apply migrations
 
-Ejecuta los patches SQL pendientes en la base de datos objetivo.
+Executes pending SQL patches on the target database.
 
-**Uso:**
+**Usage:**
 
 ```bash
 supa-kit diff migrate
 ```
 
-**Qué hace:**
+**What it does:**
 
-1. Permite seleccionar una aplicación
-2. Permite seleccionar una comparación configurada
-3. Solicita opciones de migración:
-    - **Force execution**: Ejecutar patches aunque tengan errores
-    - **Execute on source**: Ejecutar en la base de datos source en lugar de target
-4. Solicita credenciales de la base de datos objetivo
-5. Aplica los patches pendientes en orden
-6. Registra los patches aplicados en el historial
+1. Allows selecting an application
+2. Allows selecting a configured comparison
+3. Requests migration options:
+   - **Force execution**: Execute patches even if they have errors
+   - **Execute on source**: Execute on the source database instead of target
+4. Requests target database credentials
+5. Applies pending patches in order
+6. Records applied patches in history
 
-**Opciones importantes:**
+**Important options:**
 
--   **Force execution**: Útil cuando hay patches que pueden fallar pero quieres continuar
--   **Execute on source**: Permite sincronizar la base de datos source con los cambios
+- **Force execution**: Useful when there are patches that may fail but you want to continue
+- **Execute on source**: Allows synchronizing the source database with the changes
 
-### `diff status` - Ver estado de patches
+### `diff status` - View patch status
 
-Muestra el estado actual de todos los patches (pendientes, aplicados, con errores).
+Displays the current status of all patches (pending, applied, with errors).
 
-**Uso:**
+**Usage:**
 
 ```bash
 supa-kit diff status
 ```
 
-**Qué hace:**
+**What it does:**
 
-1. Permite seleccionar una aplicación
-2. Permite seleccionar una comparación
-3. Conecta a la base de datos objetivo
-4. Muestra el estado de cada patch:
-    - **Pending**: Patches no aplicados
-    - **Applied**: Patches ya aplicados
-    - **Error**: Patches que fallaron al aplicarse
+1. Allows selecting an application
+2. Allows selecting a comparison
+3. Connects to the target database
+4. Shows the status of each patch:
+   - **Pending**: Patches not applied
+   - **Applied**: Already applied patches
+   - **Error**: Patches that failed when applying
 
-### `diff history` - Ver historial
+### `diff history` - View history
 
-Muestra el historial de patches aplicados en una base de datos.
+Displays the history of patches applied to a database.
 
-**Uso:**
+**Usage:**
 
 ```bash
 supa-kit diff history
 ```
 
-**Qué hace:**
+**What it does:**
 
-1. Permite seleccionar una aplicación
-2. Permite seleccionar una comparación
-3. Conecta a la base de datos objetivo
-4. Muestra el historial completo de patches aplicados
-5. Incluye información como fecha de aplicación, nombre del patch, etc.
+1. Allows selecting an application
+2. Allows selecting a comparison
+3. Connects to the target database
+4. Shows the complete history of applied patches
+5. Includes information such as application date, patch name, etc.
 
-## Flujo de Migración Completo
+## Complete Migration Flow
 
-A continuación se describe el flujo paso a paso para realizar una migración completa de una base de datos.
+The following describes the step-by-step flow to perform a complete database migration.
 
-### Paso 1: Configurar la aplicación y entornos
+### Step 1: Configure the application and environments
 
-Si es la primera vez que usas el CLI, necesitas configurar la aplicación y los entornos:
+If this is your first time using the CLI, you need to configure the application and environments:
 
 ```bash
-# Ejecutar el comando add
+# Run the add command
 supa-kit diff add
 ```
 
-**Flujo:**
+**Flow:**
 
-1. Crear una nueva aplicación (o seleccionar existente)
-2. Agregar entorno **source** (base de datos de origen)
-3. Agregar entorno **target** (base de datos de destino)
-4. Crear una comparación que relacione source y target
+1. Create a new application (or select existing)
+2. Add **source** environment (origin database)
+3. Add **target** environment (destination database)
+4. Create a comparison that relates source and target
 
-**Ejemplo de configuración:**
+**Configuration example:**
 
--   Aplicación: `mi-proyecto`
--   Entorno source: `dev` (localhost:5432/dev)
--   Entorno target: `qa` (localhost:5432/qa)
--   Comparación: `dev-to-qa`
+- Application: `my-project`
+- Source environment: `dev` (localhost:5432/dev)
+- Target environment: `qa` (localhost:5432/qa)
+- Comparison: `dev-to-qa`
 
-### Paso 2: Verificar configuración
+### Step 2: Verify configuration
 
-Antes de generar patches, verifica que la configuración esté correcta:
+Before generating patches, verify that the configuration is correct:
 
 ```bash
 supa-kit diff ls
 ```
 
-Esto te permitirá verificar que los entornos y comparaciones estén configurados correctamente.
+This will allow you to verify that environments and comparisons are configured correctly.
 
-### Paso 3: Generar patches SQL
+### Step 3: Generate SQL patches
 
-Compara las bases de datos y genera los patches SQL:
+Compare the databases and generate the SQL patches:
 
 ```bash
 supa-kit diff compare
 ```
 
-**Proceso:**
+**Process:**
 
-1. Selecciona la aplicación (`mi-proyecto`)
-2. Selecciona la comparación (`dev-to-qa`)
-3. Ingresa las credenciales de la base de datos source
-4. Ingresa las credenciales de la base de datos target
-5. El CLI compara ambas bases de datos
-6. Se genera un archivo SQL patch con las diferencias
+1. Select the application (`my-project`)
+2. Select the comparison (`dev-to-qa`)
+3. Enter the source database credentials
+4. Enter the target database credentials
+5. The CLI compares both databases
+6. An SQL patch file is generated with the differences
 
-**Resultado:**
+**Result:**
 
-Se crea un archivo SQL en el directorio configurado (por defecto `./patches/`) con un nombre único basado en timestamp, por ejemplo: `20240101120000_dev-to-qa.sql`
+An SQL file is created in the configured directory (default `./patches/`) with a unique timestamp-based name, for example: `20240101120000_dev-to-qa.sql`
 
-### Paso 4: Verificar estado de patches
+### Step 4: Verify patch status
 
-Antes de aplicar las migraciones, verifica el estado de los patches:
+Before applying migrations, verify the patch status:
 
 ```bash
 supa-kit diff status
 ```
 
-**Proceso:**
+**Process:**
 
-1. Selecciona la aplicación
-2. Selecciona la comparación
-3. Ingresa las credenciales de la base de datos target
-4. El CLI muestra el estado de todos los patches:
-    - Patches pendientes de aplicar
-    - Patches ya aplicados
-    - Patches con errores
+1. Select the application
+2. Select the comparison
+3. Enter the target database credentials
+4. The CLI shows the status of all patches:
+   - Patches pending to apply
+   - Already applied patches
+   - Patches with errors
 
-**Resultado:**
+**Result:**
 
-Puedes ver qué patches están listos para aplicar y cuáles ya fueron aplicados anteriormente.
+You can see which patches are ready to apply and which have already been applied previously.
 
-### Paso 5: Aplicar migraciones
+### Step 5: Apply migrations
 
-Ejecuta los patches pendientes en la base de datos objetivo:
+Execute the pending patches on the target database:
 
 ```bash
 supa-kit diff migrate
 ```
 
-**Proceso:**
+**Process:**
 
-1. Selecciona la aplicación
-2. Selecciona la comparación
-3. Elige las opciones:
-    - **Force execution**: `No` (recomendado para producción)
-    - **Execute on source**: `No` (aplicar en target)
-4. Ingresa las credenciales de la base de datos target
-5. El CLI aplica los patches pendientes en orden
-6. Muestra el progreso de la migración
+1. Select the application
+2. Select the comparison
+3. Choose the options:
+   - **Force execution**: `No` (recommended for production)
+   - **Execute on source**: `No` (apply to target)
+4. Enter the target database credentials
+5. The CLI applies the pending patches in order
+6. Shows migration progress
 
-**Resultado:**
+**Result:**
 
-Los patches se aplican secuencialmente en la base de datos target. Si algún patch falla, el proceso se detiene (a menos que uses force execution).
+Patches are applied sequentially to the target database. If any patch fails, the process stops (unless you use force execution).
 
-### Paso 6: Verificar historial
+### Step 6: Verify history
 
-Después de aplicar las migraciones, verifica el historial:
+After applying migrations, verify the history:
 
 ```bash
 supa-kit diff history
 ```
 
-**Proceso:**
+**Process:**
 
-1. Selecciona la aplicación
-2. Selecciona la comparación
-3. Ingresa las credenciales de la base de datos target
-4. El CLI muestra el historial completo de patches aplicados
+1. Select the application
+2. Select the comparison
+3. Enter the target database credentials
+4. The CLI shows the complete history of applied patches
 
-**Resultado:**
+**Result:**
 
-Puedes ver un registro completo de todos los patches que se han aplicado, incluyendo fechas y nombres de archivos.
+You can see a complete record of all patches that have been applied, including dates and file names.
 
-## Orden Recomendado de Comandos
+## Recommended Command Order
 
-Para realizar una migración completa por primera vez:
+To perform a complete migration for the first time:
 
 ```bash
-# 1. Configurar (solo la primera vez)
+# 1. Configure (only the first time)
 supa-kit diff add
 
-# 2. Verificar configuración
+# 2. Verify configuration
 supa-kit diff ls
 
-# 3. Generar patches
+# 3. Generate patches
 supa-kit diff compare
 
-# 4. Verificar estado antes de migrar
+# 4. Verify status before migrating
 supa-kit diff status
 
-# 5. Aplicar migraciones
+# 5. Apply migrations
 supa-kit diff migrate
 
-# 6. Verificar historial
+# 6. Verify history
 supa-kit diff history
 ```
 
-Para migraciones subsecuentes (cuando ya está configurado):
+For subsequent migrations (when already configured):
 
 ```bash
-# 1. Generar nuevos patches
+# 1. Generate new patches
 supa-kit diff compare
 
-# 2. Verificar estado
+# 2. Verify status
 supa-kit diff status
 
-# 3. Aplicar migraciones
+# 3. Apply migrations
 supa-kit diff migrate
 
-# 4. Verificar historial
+# 4. Verify history
 supa-kit diff history
 ```
 
-## Estructura de Configuración
+## Configuration Structure
 
-Las configuraciones se almacenan en archivos `.diffconfig.json` en el directorio de cada aplicación.
+Configurations are stored in `.diffconfig.json` files in each application's directory.
 
-**Ubicación:**
+**Location:**
 
 ```
 .config/
-└── [nombre-aplicacion]/
-    └── [nombre-aplicacion].diffconfig.json
+└── [application-name]/
+    └── [application-name].diffconfig.json
 ```
 
-**Estructura del archivo de configuración:**
+**Configuration file structure:**
 
 ```json
 {
@@ -428,48 +428,48 @@ Las configuraciones se almacenan en archivos `.diffconfig.json` en el directorio
 }
 ```
 
-## Notas Importantes
+## Important Notes
 
-1. **Credenciales**: Las contraseñas no se almacenan en los archivos de configuración por seguridad. Se solicitan en cada operación que las requiere.
+1. **Credentials**: Passwords are not stored in configuration files for security. They are requested in each operation that requires them.
 
-2. **Patches únicos**: Cada patch generado tiene un nombre único basado en timestamp para evitar sobrescrituras.
+2. **Unique patches**: Each generated patch has a unique timestamp-based name to avoid overwrites.
 
-3. **Orden de aplicación**: Los patches se aplican en orden cronológico (por nombre de archivo).
+3. **Application order**: Patches are applied in chronological order (by file name).
 
-4. **Base de datos target**: Por defecto, las migraciones se aplican en la base de datos target. Puedes usar la opción "Execute on source" para aplicar en la base de datos source.
+4. **Target database**: By default, migrations are applied to the target database. You can use the "Execute on source" option to apply to the source database.
 
-5. **Force execution**: Usa con precaución. Permite continuar con patches que tienen errores, pero puede dejar la base de datos en un estado inconsistente.
+5. **Force execution**: Use with caution. It allows continuing with patches that have errors, but may leave the database in an inconsistent state.
 
-## Solución de Problemas
+## Troubleshooting
 
 ### Error: "No applications configured"
 
-Ejecuta `supa-kit diff add` para crear tu primera aplicación y configuración.
+Run `supa-kit diff add` to create your first application and configuration.
 
 ### Error: "No comparisons configured"
 
-Ejecuta `supa-kit diff add` y crea una comparación para tu aplicación.
+Run `supa-kit diff add` and create a comparison for your application.
 
-### Error de conexión a la base de datos
+### Database connection error
 
-Verifica que:
+Verify that:
 
--   Las credenciales sean correctas
--   La base de datos esté accesible
--   Los parámetros de conexión (host, port) sean correctos
--   El SSL esté configurado correctamente
+- Credentials are correct
+- Database is accessible
+- Connection parameters (host, port) are correct
+- SSL is configured correctly
 
-### Error al aplicar patches
+### Error when applying patches
 
-1. Verifica el estado con `supa-kit diff status`
-2. Revisa los mensajes de error específicos
-3. Verifica que no haya conflictos de datos
-4. Considera usar `force execution` solo si es necesario y entiendes las consecuencias
+1. Verify status with `supa-kit diff status`
+2. Review specific error messages
+3. Verify there are no data conflicts
+4. Consider using `force execution` only if necessary and you understand the consequences
 
-## Soporte
+## Support
 
-Para más información y soporte:
+For more information and support:
 
--   **Repositorio**: https://github.com/leomerida15/supabase-kit
--   **GobernAI**: https://gobern.ai/
--   **LatamEarth**: https://latamearth.com
+- **Repository**: https://github.com/leomerida15/supabase-kit
+- **GobernAI**: https://gobern.ai/
+- **LatamEarth**: https://latamearth.com

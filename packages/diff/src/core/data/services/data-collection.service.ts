@@ -131,6 +131,7 @@ export class DataCollectionService implements DataCollectionPort {
 
 		try {
 			// Buscar secuencias asociadas a columnas de la tabla
+			// Usar pg_sequences para obtener last_value y hacer JOIN con pg_sequence para seqcycle
 			const query = `
 				SELECT
 					s.schemaname as schema,
@@ -140,11 +141,12 @@ export class DataCollectionService implements DataCollectionPort {
 					s.min_value as min,
 					s.max_value as max,
 					s.start_value as start,
-					s.is_cycled as cycle
+					COALESCE(seq.seqcycle, false) as cycle
 				FROM pg_sequences s
-				INNER JOIN pg_depend d ON d.objid = (
-					SELECT oid FROM pg_class WHERE relname = s.sequencename
-				)
+				JOIN pg_class c_seq ON c_seq.relname = s.sequencename
+				JOIN pg_namespace n_seq ON n_seq.oid = c_seq.relnamespace AND n_seq.nspname = s.schemaname
+				LEFT JOIN pg_sequence seq ON seq.seqrelid = c_seq.oid
+				INNER JOIN pg_depend d ON d.objid = c_seq.oid
 				INNER JOIN pg_class c ON c.oid = d.refobjid
 				INNER JOIN pg_namespace n ON n.oid = c.relnamespace
 				WHERE n.nspname = $1 AND c.relname = $2

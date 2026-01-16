@@ -37,6 +37,8 @@ export class ForeignKeyComparatorService {
 		const scripts: string[] = [];
 		const { namespaces, crossSchemaForeignKeys } = config;
 
+		// Contar claves foráneas que se van a crear
+		const foreignKeysToCreate: string[] = [];
 		for (const fkKey in source) {
 			const sourceFK = source[fkKey];
 			const targetFK = target[fkKey];
@@ -66,6 +68,31 @@ export class ForeignKeyComparatorService {
 					// (confía en el usuario)
 				}
 
+				foreignKeysToCreate.push(fkKey);
+			}
+		}
+
+		// Agregar comentario de inicio si hay claves foráneas para crear
+		if (foreignKeysToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push(`-- FOREIGN KEYS: Start (${foreignKeysToCreate.length} foreign key(s) to create)\n`);
+			scripts.push('-- ============================================\n');
+			scripts.push(
+				'-- NOTE: If any columns referenced by these foreign keys contain NULL values,\n',
+			);
+			scripts.push(
+				'-- update them with valid foreign key references before executing this section.\n',
+			);
+			scripts.push(
+				'-- PostgreSQL will validate all existing data when creating foreign key constraints.\n',
+			);
+			scripts.push('-- ============================================\n');
+		}
+
+		// Generar scripts CREATE para claves foráneas que existen en source pero no en target
+		for (const fkKey of foreignKeysToCreate) {
+			const sourceFK = source[fkKey];
+			if (sourceFK) {
 				scripts.push(
 					generateCreateForeignKeyScript(
 						sourceFK.schema,
@@ -80,6 +107,13 @@ export class ForeignKeyComparatorService {
 					),
 				);
 			}
+		}
+
+		// Agregar comentario de fin si se crearon claves foráneas
+		if (foreignKeysToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push('-- FOREIGN KEYS: End\n');
+			scripts.push('-- ============================================\n');
 		}
 
 		return scripts;

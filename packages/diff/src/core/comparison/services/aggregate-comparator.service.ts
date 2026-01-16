@@ -36,7 +36,8 @@ export class AggregateComparatorService {
 		const { source, target, config } = params;
 		const scripts: string[] = [];
 
-		// Generar scripts CREATE para agregados que existen en source pero no en target
+		// Contar agregados que se van a crear
+		const aggregatesToCreate: string[] = [];
 		for (const aggregateKey in source) {
 			const sourceAggregate = source[aggregateKey];
 			const targetAggregate = target[aggregateKey];
@@ -46,6 +47,21 @@ export class AggregateComparatorService {
 			}
 
 			if (!targetAggregate) {
+				aggregatesToCreate.push(aggregateKey);
+			}
+		}
+
+		// Agregar comentario de inicio si hay agregados para crear
+		if (aggregatesToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push(`-- AGGREGATES: Start (${aggregatesToCreate.length} aggregate(s) to create)\n`);
+			scripts.push('-- ============================================\n');
+		}
+
+		// Generar scripts CREATE para agregados que existen en source pero no en target
+		for (const aggregateKey of aggregatesToCreate) {
+			const sourceAggregate = source[aggregateKey];
+			if (sourceAggregate) {
 				scripts.push(
 					generateCreateAggregateScript(
 						sourceAggregate.schema,
@@ -56,8 +72,16 @@ export class AggregateComparatorService {
 			}
 		}
 
+		// Agregar comentario de fin si se crearon agregados
+		if (aggregatesToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push('-- AGGREGATES: End\n');
+			scripts.push('-- ============================================\n');
+		}
+
 		// Generar scripts DROP para agregados que existen en target pero no en source (si está habilitado)
 		if (config?.dropMissingAggregate) {
+			const aggregatesToDrop: string[] = [];
 			for (const aggregateKey in target) {
 				const targetAggregate = target[aggregateKey];
 				const sourceAggregate = source[aggregateKey];
@@ -67,10 +91,27 @@ export class AggregateComparatorService {
 				}
 
 				if (!sourceAggregate) {
+					aggregatesToDrop.push(aggregateKey);
+				}
+			}
+
+			if (aggregatesToDrop.length > 0) {
+				scripts.push('-- ============================================\n');
+				scripts.push(`-- AGGREGATES: Drop Start (${aggregatesToDrop.length} aggregate(s) to drop)\n`);
+				scripts.push('-- ============================================\n');
+
+				for (const aggregateKey of aggregatesToDrop) {
+					const targetAggregate = target[aggregateKey];
+					if (targetAggregate) {
 					// Para agregados, necesitamos extraer los tipos de argumentos de la definición
 					// Por ahora, generamos sin tipos (PostgreSQL puede manejarlo)
 					scripts.push(generateDropAggregateScript(targetAggregate.schema, targetAggregate.name));
 				}
+				}
+
+				scripts.push('-- ============================================\n');
+				scripts.push('-- AGGREGATES: Drop End\n');
+				scripts.push('-- ============================================\n');
 			}
 		}
 

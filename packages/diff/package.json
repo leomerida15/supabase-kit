@@ -6,7 +6,7 @@
     "main": "./dist/index.js",
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
-    "name": "@supabase-kit/cli",
+    "name": "@supabase-kit/diff",
     "author": {
         "name": "leomerida15",
         "email": "dimasmerida15@gmail.com",
@@ -29,7 +29,7 @@
 		}
 	},
 	"scripts": {
-		"dev": "bun run index.ts",
+		"dev": "bun run bunpack.watch.ts",
         "start": "bun run index.ts",
         "build": "bun run -b bunpack.build.ts",
         "type:check": "bun run --bun tsc --project tsconfig.json"

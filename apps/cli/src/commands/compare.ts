@@ -80,6 +80,27 @@ export async function handleCompareCommand(): Promise<void> {
         // Cargar configuración
         const config = loadComparison({ applicationName, comparisonName });
 
+        // Siempre solicitar los schemas al usuario
+        const existingSchemas = config.compareOptions.schemaCompare.namespaces || [];
+        const initialValue = existingSchemas.length > 0 ? existingSchemas.join(', ') : '';
+
+        const schemasAnswer = await Enquirer.prompt<{ schemas: string }>({
+            type: 'input',
+            name: 'schemas',
+            message: 'Schemas to compare (comma-separated, empty for all):',
+            initial: initialValue,
+        });
+
+        const schemas = schemasAnswer.schemas.trim()
+            ? schemasAnswer.schemas
+                  .split(',')
+                  .map((s: string) => s.trim())
+                  .filter((s: string) => s !== '')
+            : [];
+
+        // Actualizar la configuración con los schemas seleccionados
+        config.compareOptions.schemaCompare.namespaces = schemas;
+
         // Solicitar passwords
         const sourcePasswordAnswer = await Enquirer.prompt<{ password: string }>({
             type: 'password',
@@ -93,16 +114,24 @@ export async function handleCompareCommand(): Promise<void> {
             message: `Password for ${config.targetClient.user}@${config.targetClient.host}:${config.targetClient.port}/${config.targetClient.database}:`,
         });
 
+        // Validar que las contraseñas no estén vacías
+        if (!sourcePasswordAnswer.password || sourcePasswordAnswer.password.trim() === '') {
+            throw new Error('Password is required for source database');
+        }
+        if (!targetPasswordAnswer.password || targetPasswordAnswer.password.trim() === '') {
+            throw new Error('Password is required for target database');
+        }
+
         // Agregar passwords a la configuración
         const configWithPasswords = {
             ...config,
             sourceClient: {
                 ...config.sourceClient,
-                password: sourcePasswordAnswer.password || null,
+                password: sourcePasswordAnswer.password,
             },
             targetClient: {
                 ...config.targetClient,
-                password: targetPasswordAnswer.password || null,
+                password: targetPasswordAnswer.password,
             },
         };
 
@@ -139,7 +168,15 @@ export async function handleCompareCommand(): Promise<void> {
         console.log(`📄 Generated file: ${patchFile}\n`);
     } catch (error) {
         if (error instanceof Error) {
-            throw new Error(`Error executing comparison: ${error.message}`, { cause: error });
+            // Mostrar el error completo incluyendo la causa si existe
+            let errorMessage = `Error executing comparison: ${error.message}`;
+            if (error.cause instanceof Error) {
+                errorMessage += `\n   Cause: ${error.cause.message}`;
+                if (error.cause.stack && process.env.DEBUG) {
+                    errorMessage += `\n   Stack: ${error.cause.stack}`;
+                }
+            }
+            throw new Error(errorMessage, { cause: error });
         }
         throw error;
     }
