@@ -33,12 +33,12 @@ export async function build(): Promise<BuildOutput> {
     // Build the main bundle for Node.js
     console.log('🔨 Construyendo bundle principal para Node.js...');
     const buildResult = await Bun.build({
-        entrypoints: ['./index.ts'],
-        outdir: './dist',
-        format: 'esm',
         minify: true,
-        sourcemap: 'none',
+        format: 'esm',
         target: 'node',
+        outdir: './dist',
+        sourcemap: 'none',
+        entrypoints: ['./index.ts'],
 
         // Define environment
         define: {
@@ -49,9 +49,11 @@ export async function build(): Promise<BuildOutput> {
     if (buildResult.success) {
         console.log('✅ Bundle principal construido exitosamente');
         console.log(`📦 ${buildResult.outputs.length} archivo(s) generado(s)`);
-        buildResult.outputs.forEach((output) => {
+      
+
+        for (const output of buildResult.outputs) {
             console.log(`   - ${output.path} (${output.kind})`);
-        });
+        }
 
         // Agregar shebang para Node.js al archivo principal y hacerlo ejecutable
         const mainOutput = buildResult.outputs.find((output) => output.path.endsWith('index.js'));
