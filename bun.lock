@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "supa-kit",
@@ -13,7 +14,7 @@
     },
     "apps/cli": {
       "name": "@supabase-kit/cli",
-      "version": "1.0.0",
+      "version": "0.4.0",
       "bin": {
         "supa-kit": "dist/index.js",
       },
@@ -25,8 +26,8 @@
       },
     },
     "packages/diff": {
-      "name": "diff",
-      "version": "0.0.0",
+      "name": "@supabase-kit/diff",
+      "version": "1.10.0",
       "dependencies": {
         "postgres": "^3.4.0",
       },
@@ -151,6 +152,8 @@
     "@size-limit/preset-small-lib": ["@size-limit/preset-small-lib@11.2.0", "", { "dependencies": { "@size-limit/esbuild": "11.2.0", "@size-limit/file": "11.2.0", "size-limit": "11.2.0" } }, "sha512-RFbbIVfv8/QDgTPyXzjo5NKO6CYyK5Uq5xtNLHLbw5RgSKrgo8WpiB/fNivZuNd/5Wk0s91PtaJ9ThNcnFuI3g=="],
 
     "@supabase-kit/cli": ["@supabase-kit/cli@workspace:apps/cli"],
+
+    "@supabase-kit/diff": ["@supabase-kit/diff@workspace:packages/diff"],
 
     "@supabase-kit/react": ["@supabase-kit/react@workspace:packages/react"],
 
@@ -281,8 +284,6 @@
     "depd": ["depd@2.0.0", "", {}, "sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw=="],
 
     "destroy": ["destroy@1.2.0", "", {}, "sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg=="],
-
-    "diff": ["diff@workspace:packages/diff"],
 
     "docsify": ["docsify@4.13.1", "", { "dependencies": { "marked": "^1.2.9", "medium-zoom": "^1.0.6", "opencollective-postinstall": "^2.0.2", "prismjs": "^1.27.0", "strip-indent": "^3.0.0", "tinydate": "^1.3.0", "tweezer.js": "^1.4.0" } }, "sha512-BsDypTBhw0mfslw9kZgAspCMZSM+sUIIDg5K/t1hNLkvbem9h64ZQc71e1IpY+iWsi/KdeqfazDfg52y2Lmm0A=="],
 

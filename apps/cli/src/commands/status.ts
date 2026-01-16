@@ -127,7 +127,6 @@ export async function handleStatusCommand(): Promise<void> {
             const statusResults: Array<{
                 filename: string;
                 status: string;
-                author: string | null;
             }> = [];
 
             for (const filename of sqlFiles) {
@@ -138,40 +137,35 @@ export async function handleStatusCommand(): Promise<void> {
                 }
 
                 const version = match[1];
-                const name = match[2];
 
                 try {
-                    // Consultar estado del patch
+                    // Consultar estado del patch (estructura Supabase: solo verificar existencia por version)
                     const statusQuery = `
-                        SELECT "version", "status", "author", "message"
+                        SELECT "version"
                         FROM ${fullTableName}
-                        WHERE "version" = $1 AND "name" = $2
-                        ORDER BY "version" DESC
+                        WHERE "version" = $1
                         LIMIT 1;
                     `;
 
                     const results = await databaseAdapter.query<{
                         version: string;
-                        status: string;
-                        author: string;
-                        message: string | null;
                     }>({
                         connection,
                         sql: statusQuery,
-                        params: [version, name],
+                        params: [version],
                     });
 
                     if (results.length > 0) {
+                        // Existe = ya aplicada
                         statusResults.push({
                             filename,
-                            status: results[0]!.status || PatchStatus.TO_APPLY,
-                            author: results[0]!.author || null,
+                            status: PatchStatus.DONE,
                         });
                     } else {
+                        // No existe = pendiente
                         statusResults.push({
                             filename,
                             status: PatchStatus.TO_APPLY,
-                            author: null,
                         });
                     }
                 } catch (error) {
@@ -179,26 +173,22 @@ export async function handleStatusCommand(): Promise<void> {
                     statusResults.push({
                         filename,
                         status: PatchStatus.TO_APPLY,
-                        author: null,
                     });
                 }
             }
 
-            // Mostrar tabla de estados
+            // Mostrar tabla de estados (solo Pending o Applied en Supabase)
             const statusLabels: Record<string, string> = {
                 [PatchStatus.TO_APPLY]: '⏳ Pending',
-                [PatchStatus.IN_PROGRESS]: '🔄 In progress',
                 [PatchStatus.DONE]: '✅ Applied',
-                [PatchStatus.ERROR]: '❌ Error',
             };
 
             console.log('Status      | File');
             console.log('------------|----------------------------------------');
 
-            statusResults.forEach((result, index) => {
+            statusResults.forEach((result) => {
                 const statusLabel = statusLabels[result.status] || result.status;
-                const author = result.author ? ` (${result.author})` : '';
-                console.log(`${statusLabel.padEnd(12)} | ${result.filename}${author}`);
+                console.log(`${statusLabel.padEnd(12)} | ${result.filename}`);
             });
 
             console.log('\n');

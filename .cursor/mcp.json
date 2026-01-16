@@ -8,6 +8,9 @@
 		},
 		"pg-diff-repo": {
 			"url": "https://gitmcp.io/michaelsogos/pg-diff"
-		}
+		},
+		"GobernAI-supabase": {
+			"url": "https://mcp.supabase.com/mcp?project_ref=yvztwadvzlapiqjkmabb&read_only=true"
+		  }
 	}
 }

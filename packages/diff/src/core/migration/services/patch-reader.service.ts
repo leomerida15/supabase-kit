@@ -141,8 +141,22 @@ export class PatchReaderService {
 	}
 
 	/**
+	 * Normaliza comentarios SQL de estilo JavaScript (//) a formato PostgreSQL (--).
+	 * PostgreSQL solo acepta comentarios con -- o 
+	 *
+	 * @param line - Línea de SQL a normalizar
+	 * @returns Línea con comentarios normalizados
+	 */
+	private normalizeSqlComments(line: string): string {
+		// Convertir comentarios // a --
+		// Solo convertir si la línea empieza con // o tiene // al inicio (después de espacios)
+		return line.replace(/^(\s*)\/\//, '$1--');
+	}
+
+	/**
 	 * Parsea bloques de script desde el contenido del archivo.
 	 * Busca bloques marcados con --- BEGIN label --- y --- END label ---.
+	 * Si no encuentra marcadores, trata todo el contenido como un único bloque.
 	 *
 	 * @param content - Contenido del archivo
 	 * @returns Bloques de script parseados
@@ -178,14 +192,42 @@ export class PatchReaderService {
 				blocks.push(currentBlock);
 				currentBlock = null;
 			} else if (currentBlock) {
-				// Línea dentro del bloque
-				currentBlock.lines.push(line);
+				// Línea dentro del bloque - normalizar comentarios
+				currentBlock.lines.push(this.normalizeSqlComments(line));
 			}
 		}
 
 		// Agregar último bloque si existe
 		if (currentBlock) {
 			blocks.push(currentBlock);
+		}
+
+		// Si no se encontraron bloques con marcadores BEGIN/END,
+		// tratar todo el contenido como un único bloque
+		if (blocks.length === 0 && lines.length > 0) {
+			// Filtrar líneas vacías al inicio y final
+			const trimmedLines = lines.filter((line, index) => {
+				const trimmed = line.trim();
+				// Incluir todas las líneas excepto líneas completamente vacías al inicio
+				if (trimmed.length === 0 && index === 0) {
+					return false;
+				}
+				return true;
+			});
+
+			// Remover líneas vacías al final
+			while (trimmedLines.length > 0 && trimmedLines[trimmedLines.length - 1]?.trim().length === 0) {
+				trimmedLines.pop();
+			}
+
+			if (trimmedLines.length > 0) {
+				// Normalizar comentarios en todas las líneas del bloque único
+				const normalizedLines = trimmedLines.map((line) => this.normalizeSqlComments(line));
+				blocks.push({
+					label: 'main',
+					lines: normalizedLines,
+				});
+			}
 		}
 
 		return blocks;

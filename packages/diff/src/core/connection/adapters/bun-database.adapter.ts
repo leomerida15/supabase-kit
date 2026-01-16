@@ -49,6 +49,7 @@ export class BunDatabaseAdapter implements DatabasePort {
 
 		try {
 			// Crear conexión usando postgres.js
+			// Para Supabase pooler, usamos max: 1 para evitar problemas de conexión
 			const sql: Sql = postgres({
 				host: validatedParams.host,
 				port: validatedParams.port,
@@ -60,6 +61,9 @@ export class BunDatabaseAdapter implements DatabasePort {
 				connection: {
 					application_name: validatedParams.applicationName,
 				},
+				// Configuración para pooler de Supabase
+				max: 1, // Una sola conexión para evitar problemas con el pooler
+				idle_timeout: 20, // Timeout más corto para conexiones inactivas
 			});
 
 			// Generar ID único para la conexión
@@ -111,9 +115,17 @@ export class BunDatabaseAdapter implements DatabasePort {
 			const result = await connection.sql.unsafe(sqlString, queryParams as never[]);
 			return result.concat() as unknown as T[];
 		} catch (error) {
-			throw new Error(`Query execution failed: ${sqlString.substring(0, 100)}...`, {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const sqlPreview = sqlString.length > 200 
+				? `${sqlString.substring(0, 200)}...` 
+				: sqlString;
+			
+			throw new Error(
+				`Query execution failed: ${errorMessage}\nSQL: ${sqlPreview}`,
+				{
 				cause: error instanceof Error ? error : new Error(String(error)),
-			});
+				}
+			);
 		}
 	}
 
@@ -191,11 +203,34 @@ export class BunDatabaseAdapter implements DatabasePort {
 				patch,
 			});
 		} catch (error) {
+			// Mejorar mensaje de error para problemas de autenticación con Supabase
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const causeMessage = error instanceof Error && error.cause instanceof Error ? error.cause.message : '';
+			
+			// Detectar errores específicos de Supabase pooler
+			if (errorMessage.includes('Tenant or user not found') || causeMessage.includes('Tenant or user not found')) {
+				throw new Error(
+					`Authentication failed with Supabase pooler. Please verify:\n` +
+					`  1. The password is correct for the database user\n` +
+					`  2. The user format is correct (should be: postgres.<tenant-id>)\n` +
+					`  3. The database name is correct\n` +
+					`  4. The Supabase project is active and accessible\n` +
+					`\nOriginal error: ${errorMessage}`,
+					{
+						cause: error instanceof Error ? error : new Error(String(error)),
+					}
+				);
+			}
+
+			// Si el error ya tiene una causa, preservarlo
 			if (error instanceof Error && error.cause) {
 				throw error;
 			}
 
-			throw new Error('Failed to fetch server version', {
+			// Construir mensaje de error más descriptivo
+			const errorDetails = error instanceof Error && error.stack ? `\n   Details: ${error.stack.split('\n').slice(0, 3).join('\n')}` : '';
+
+			throw new Error(`Failed to fetch server version: ${errorMessage}${errorDetails}`, {
 				cause: error instanceof Error ? error : new Error(String(error)),
 			});
 		}

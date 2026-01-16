@@ -23,6 +23,7 @@ import type {
 	ForeignKey,
 	RLSPolicy,
 } from '../../../catalog/domain/entities/index.js';
+import type { TableStructure } from '../../../catalog/domain/types/database-objects.types.js';
 
 /**
  * Resultado de comparación de objetos.
@@ -61,6 +62,12 @@ export interface ComparisonParams {
 	 * Configuración de comparación de esquemas.
 	 */
 	config: SchemaCompare;
+
+	/**
+	 * Mapa que indica si las tablas target tienen datos existentes.
+	 * Clave: tableKey (schema.table), Valor: boolean (true = tiene datos)
+	 */
+	targetTableHasData?: Record<string, boolean>;
 }
 
 /**
@@ -165,9 +172,25 @@ export interface CompareTablesParams {
 	target: Record<string, Table>;
 
 	/**
+	 * Estructuras detalladas de tablas del source (opcional, para generar SQL completo).
+	 */
+	sourceTableStructures?: Record<string, TableStructure>;
+
+	/**
+	 * Estructuras detalladas de tablas del target (opcional, para comparar columnas).
+	 */
+	targetTableStructures?: Record<string, TableStructure>;
+
+	/**
 	 * Configuración de comparación (opcional, para scripts DROP).
 	 */
 	config?: Pick<SchemaCompare, 'dropMissingTable'>;
+
+	/**
+	 * Mapa que indica si las tablas target tienen datos existentes.
+	 * Clave: tableKey (schema.table), Valor: boolean (true = tiene datos)
+	 */
+	targetTableHasData?: Record<string, boolean>;
 }
 
 /**
@@ -231,9 +254,9 @@ export interface CompareFunctionsParams {
 	target: Record<string, Function>;
 
 	/**
-	 * Configuración de comparación (opcional, para scripts DROP).
+	 * Configuración de comparación (opcional, para scripts DROP, verificación manual y filtrado de funciones de superusuario).
 	 */
-	config?: Pick<SchemaCompare, 'dropMissingFunction'>;
+	config?: Pick<SchemaCompare, 'dropMissingFunction' | 'useManualFunctionCheck' | 'excludeSuperuserFunctions'>;
 }
 
 /**

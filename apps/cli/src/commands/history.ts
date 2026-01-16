@@ -98,19 +98,17 @@ export async function handleHistoryCommand(): Promise<void> {
                 config: configWithPassword.targetClient,
             });
 
-            // Consultar todo el historial
+            // Consultar todo el historial (estructura Supabase)
             const historyQuery = `
-                SELECT "version", "name", "status", "author", "message"
+                SELECT "version", "name", "statements"
                 FROM ${fullTableName}
                 ORDER BY "version" DESC;
             `;
 
             const results = await databaseAdapter.query<{
                 version: string;
-                name: string;
-                status: string;
-                author: string;
-                message: string | null;
+                name: string | null;
+                statements: string[] | null;
             }>({
                 connection,
                 sql: historyQuery,
@@ -121,24 +119,17 @@ export async function handleHistoryCommand(): Promise<void> {
                 return;
             }
 
-            // Mostrar lista de patches
-            const statusLabels: Record<string, string> = {
-                [PatchStatus.TO_APPLY]: '⏳ Pending',
-                [PatchStatus.IN_PROGRESS]: '🔄 In progress',
-                [PatchStatus.DONE]: '✅ Applied',
-                [PatchStatus.ERROR]: '❌ Error',
-            };
-
+            // Mostrar lista de patches (todos están aplicados en Supabase)
             results.forEach((result, index) => {
                 const isLast = index === results.length - 1;
                 const prefix = isLast ? '└──' : '├──';
-                const filename = `${result.version}_${result.name}.sql`;
-                const statusLabel = statusLabels[result.status] || result.status;
-                const author = result.author ? ` (${result.author})` : '';
-                const message = result.message ? ` - ${result.message}` : '';
+                const name = result.name || 'unknown';
+                const filename = `${result.version}_${name}.sql`;
+                const statementsCount = result.statements?.length || 0;
+                const statementsInfo = statementsCount > 0 ? ` (${statementsCount} statements)` : '';
 
                 console.log(`   ${prefix} ${filename}`);
-                console.log(`   ${isLast ? '    ' : '│   '}    ${statusLabel}${author}${message}`);
+                console.log(`   ${isLast ? '    ' : '│   '}    ✅ Applied${statementsInfo}`);
                 if (!isLast) {
                     console.log('');
                 }

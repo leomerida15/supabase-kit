@@ -97,13 +97,18 @@ export class ObjectComparisonService {
 			const tableComparator = new TableComparatorService();
 			const source = sourceObjects.tables || {};
 			const target = targetObjects.tables || {};
+			const sourceTableStructures = sourceObjects.tableStructures || undefined;
+			const targetTableStructures = targetObjects.tableStructures || undefined;
 			allScripts.push(
 				...tableComparator.compare({
 					source,
 					target,
+					sourceTableStructures,
+					targetTableStructures,
 					config: {
 						dropMissingTable: config.dropMissingTable,
 					},
+					targetTableHasData: params.targetTableHasData,
 				}),
 			);
 		}
@@ -151,6 +156,8 @@ export class ObjectComparisonService {
 					target,
 					config: {
 						dropMissingFunction: config.dropMissingFunction,
+						useManualFunctionCheck: config.useManualFunctionCheck,
+						excludeSuperuserFunctions: config.excludeSuperuserFunctions,
 					},
 				}),
 			);

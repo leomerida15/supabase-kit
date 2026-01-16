@@ -80,6 +80,7 @@ export class PatchFileService {
 
 	/**
 	 * Genera el encabezado del archivo patch con metadatos.
+	 * Usa comentarios válidos de PostgreSQL (--) en lugar de comentarios //.
 	 *
 	 * @param author - Nombre del autor
 	 * @param datetime - Fecha y hora en formato ISO
@@ -87,8 +88,8 @@ export class PatchFileService {
 	 * @returns Encabezado formateado
 	 */
 	private generateHeader(author: string, datetime: string, titleLength: number): string {
-		const separator = '/'.repeat(titleLength + 26);
-		return `/${separator}/\n/*** SCRIPT AUTHOR: ${author.padEnd(titleLength)} ***/\n/***    CREATED ON: ${datetime.padEnd(titleLength)} ***/\n/${separator}/\n`;
+		const separator = '='.repeat(Math.max(50, titleLength + 26));
+		return `-- ${separator}\n-- SCRIPT AUTHOR: ${author}\n-- CREATED ON: ${datetime}\n-- ${separator}\n\n`;
 	}
 
 	/**

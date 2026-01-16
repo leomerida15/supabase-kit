@@ -110,15 +110,21 @@ export class PostgresCatalogAdapter implements CatalogPort {
 			});
 		}
 
-		const { connection } = params;
+		const { connection, schemas: requestedSchemas } = params;
 
 		try {
+			// Si se especifican schemas, filtrar solo esos; si no, obtener todos excepto los del sistema
+			const schemasFilter = requestedSchemas && requestedSchemas.length > 0
+				? `AND nspname IN (${requestedSchemas.map((s) => `'${s.replace(/'/g, "''")}'`).join(',')})`
+				: '';
+
 			const query = `
 				SELECT nspname as name
 				FROM pg_namespace
 				WHERE nspname NOT IN ('pg_catalog', 'information_schema')
 				AND nspname NOT LIKE 'pg_toast%'
 				AND nspname NOT LIKE 'pg_temp%'
+				${schemasFilter}
 			`;
 
 			const results = await this.databaseAdapter.query<{ name: string }>({
@@ -409,41 +415,106 @@ export class PostgresCatalogAdapter implements CatalogPort {
 		const schemasList = schemas.map((s) => `'${s.replace(/'/g, "''")}'`).join(',');
 
 		try {
+			// Obtener funciones agregadas
+			// pg_get_functiondef() no funciona con funciones agregadas (lanza excepción)
+			// Obtener primero los nombres y luego intentar obtener definiciones individualmente
+			// o usar un placeholder para las que fallan
+			// Excluir agregados nativos del sistema (en pg_catalog) y agregados de extensiones
 			const query = `
 				SELECT
 					n.nspname as schema,
-					p.proname as name,
-					pg_get_functiondef(p.oid) as definition
+					p.proname as name
 				FROM pg_proc p
 				JOIN pg_namespace n ON p.pronamespace = n.oid
+				JOIN pg_aggregate a ON p.oid = a.aggfnoid
 				WHERE n.nspname IN (${schemasList})
 				AND p.prokind = 'a'
+				AND a.aggkind = 'n'
+				AND n.nspname != 'pg_catalog'
+				AND p.oid NOT IN (
+					SELECT d.objid 
+					FROM pg_depend d
+					WHERE d.deptype = 'e'
+				)
 			`;
 
-			const results = await this.databaseAdapter.query<{
+			// Primero obtener los nombres
+			const nameResults = await this.databaseAdapter.query<{
 				schema: string;
 				name: string;
-				definition: string;
 			}>({
 				connection,
 				sql: query,
 			});
 
+			// pg_get_functiondef() NO funciona con funciones agregadas (lanza excepción)
+			// Por lo tanto, solo usamos placeholders para las definiciones
 			const aggregates: Record<string, Aggregate> = {};
-			for (const row of results) {
+			
+			for (const row of nameResults) {
+				// Usar placeholder ya que pg_get_functiondef() no funciona con agregados
+				const definition = `CREATE AGGREGATE ${row.schema}.${row.name} (...) -- Definition not available via pg_get_functiondef()`;
+				
 				const key = `${row.schema}.${row.name}`;
 				aggregates[key] = new AggregateEntity({
 					schema: row.schema,
 					name: row.name,
-					definition: row.definition,
+					definition: definition,
 				});
 			}
 
 			return aggregates;
 		} catch (error) {
-			throw new Error('Failed to retrieve aggregates', {
-				cause: error instanceof Error ? error : new Error(String(error)),
-			});
+			// Si la consulta falla completamente, intentar obtener solo los nombres
+			// sin las definiciones para diagnóstico
+			try {
+				const fallbackQuery = `
+					SELECT
+						n.nspname as schema,
+						p.proname as name
+					FROM pg_proc p
+					JOIN pg_namespace n ON p.pronamespace = n.oid
+					WHERE n.nspname IN (${schemasList})
+					AND p.prokind = 'a'
+				`;
+				
+				const fallbackResults = await this.databaseAdapter.query<{
+					schema: string;
+					name: string;
+				}>({
+					connection,
+					sql: fallbackQuery,
+				});
+
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				const causeMessage = error instanceof Error && error.cause instanceof Error 
+					? error.cause.message 
+					: '';
+				const aggregatesList = fallbackResults.length > 0 
+					? fallbackResults.map(r => `${r.schema}.${r.name}`).join(', ')
+					: 'none';
+				
+				throw new Error(
+					`Failed to retrieve aggregate definitions: ${errorMessage}${causeMessage ? `\n   Cause: ${causeMessage}` : ''}\n` +
+					`   Found ${fallbackResults.length} aggregate(s): ${aggregatesList}\n` +
+					`   This may be due to insufficient permissions or system aggregates that cannot be accessed.`,
+					{
+						cause: error instanceof Error ? error : new Error(String(error)),
+					}
+				);
+			} catch (fallbackError) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				const causeMessage = error instanceof Error && error.cause instanceof Error 
+					? error.cause.message 
+					: '';
+				
+				throw new Error(
+					`Failed to retrieve aggregates: ${errorMessage}${causeMessage ? `\n   Cause: ${causeMessage}` : ''}`,
+					{
+						cause: error instanceof Error ? error : new Error(String(error)),
+					}
+				);
+			}
 		}
 	}
 
@@ -468,18 +539,24 @@ export class PostgresCatalogAdapter implements CatalogPort {
 		const schemasList = schemas.map((s) => `'${s.replace(/'/g, "''")}'`).join(',');
 
 		try {
+			// Usar pg_sequences (vista) para obtener last_value y otros valores básicos
+			// Hacer JOIN con pg_sequence (tabla del sistema) solo para obtener seqcycle
+			// porque pg_sequences no tiene la columna is_cycled/seqcycle
 			const query = `
 				SELECT
-					s.sequence_schema as schema,
-					s.sequence_name as name,
+					s.schemaname as schema,
+					s.sequencename as name,
 					s.last_value as current_value,
-					s.increment as increment,
-					s.minimum_value::bigint as min,
-					s.maximum_value::bigint as max,
+					s.increment_by as increment,
+					s.min_value::bigint as min,
+					s.max_value::bigint as max,
 					s.start_value::bigint as start,
-					s.cycle_option = 'YES' as cycle
-				FROM information_schema.sequences s
-				WHERE s.sequence_schema IN (${schemasList})
+					COALESCE(seq.seqcycle, false) as cycle
+				FROM pg_sequences s
+				JOIN pg_class c ON c.relname = s.sequencename
+				JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = s.schemaname
+				LEFT JOIN pg_sequence seq ON seq.seqrelid = c.oid
+				WHERE s.schemaname IN (${schemasList})
 			`;
 
 			const results = await this.databaseAdapter.query<{
@@ -513,9 +590,17 @@ export class PostgresCatalogAdapter implements CatalogPort {
 
 			return sequences;
 		} catch (error) {
-			throw new Error('Failed to retrieve sequences', {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const causeMessage = error instanceof Error && error.cause instanceof Error 
+				? error.cause.message 
+				: '';
+			
+			throw new Error(
+				`Failed to retrieve sequences: ${errorMessage}${causeMessage ? `\n   Cause: ${causeMessage}` : ''}`,
+				{
 				cause: error instanceof Error ? error : new Error(String(error)),
-			});
+				}
+			);
 		}
 	}
 
@@ -649,6 +734,9 @@ export class PostgresCatalogAdapter implements CatalogPort {
 		const schemasList = schemas.map((s) => `'${s.replace(/'/g, "''")}'`).join(',');
 
 		try {
+			// Solo obtener custom types (domains y composite types que NO son automáticos)
+			// Excluir tipos compuestos que se crean automáticamente cuando se crea una tabla, vista o vista materializada
+			// Estos tipos se crean automáticamente y no deben migrarse por separado
 			const query = `
 				SELECT
 					n.nspname as schema,
@@ -657,9 +745,15 @@ export class PostgresCatalogAdapter implements CatalogPort {
 					t.typcategory as category
 				FROM pg_type t
 				JOIN pg_namespace n ON t.typnamespace = n.oid
+				LEFT JOIN pg_class c ON c.relname = t.typname 
+					AND c.relnamespace = n.oid 
+					AND c.relkind IN ('r', 'v', 'm')
 				WHERE n.nspname IN (${schemasList})
 				AND t.typtype IN ('c', 'd')
 				AND t.typname NOT LIKE '\\_%'
+				-- Excluir tipos compuestos que corresponden a tablas, vistas o vistas materializadas
+				-- Solo incluir domains ('d') y composite types sin relación asociada (custom types)
+				AND (t.typtype = 'd' OR c.oid IS NULL)
 			`;
 
 			const results = await this.databaseAdapter.query<{
@@ -725,9 +819,9 @@ export class PostgresCatalogAdapter implements CatalogPort {
 					-- Columnas locales de la foreign key
 					COALESCE(
 						STRING_AGG(
-							kcu_local.column_name
-							ORDER BY kcu_local.ordinal_position,
+							kcu_local.column_name::text,
 							','
+							ORDER BY kcu_local.ordinal_position
 						),
 						''
 					) as columns,
@@ -745,9 +839,9 @@ export class PostgresCatalogAdapter implements CatalogPort {
 					-- Columnas referenciadas
 					COALESCE(
 						STRING_AGG(
-							kcu_ref.column_name
-							ORDER BY kcu_ref.ordinal_position,
+							kcu_ref.column_name::text,
 							','
+							ORDER BY kcu_ref.ordinal_position
 						),
 						''
 					) as referenced_columns
@@ -911,20 +1005,35 @@ export class PostgresCatalogAdapter implements CatalogPort {
 		const schemasList = schemas.map((s) => `'${s.replace(/'/g, "''")}'`).join(',');
 
 		try {
+			// Query para obtener columnas con información de primary keys
 			const query = `
 				SELECT
-					table_schema as schema,
-					table_name,
-					column_name,
-					data_type,
-					character_maximum_length as max_length,
-					is_nullable = 'YES' as is_nullable,
-					column_default as defaultValue,
-					ordinal_position,
-					false as is_primary_key
-				FROM information_schema.columns
-				WHERE table_schema IN (${schemasList})
-				ORDER BY table_schema, table_name, ordinal_position
+					c.table_schema as schema,
+					c.table_name,
+					c.column_name,
+					c.data_type,
+					c.character_maximum_length as max_length,
+					c.is_nullable = 'YES' as is_nullable,
+					c.column_default as defaultValue,
+					c.ordinal_position,
+					CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary_key
+				FROM information_schema.columns c
+				LEFT JOIN (
+					SELECT
+						ku.table_schema,
+						ku.table_name,
+						ku.column_name
+					FROM information_schema.table_constraints tc
+					INNER JOIN information_schema.key_column_usage ku
+						ON tc.constraint_name = ku.constraint_name
+						AND tc.table_schema = ku.table_schema
+					WHERE tc.constraint_type = 'PRIMARY KEY'
+						AND tc.table_schema IN (${schemasList})
+				) pk ON c.table_schema = pk.table_schema
+					AND c.table_name = pk.table_name
+					AND c.column_name = pk.column_name
+				WHERE c.table_schema IN (${schemasList})
+				ORDER BY c.table_schema, c.table_name, c.ordinal_position
 			`;
 
 			const results = await this.databaseAdapter.query<{

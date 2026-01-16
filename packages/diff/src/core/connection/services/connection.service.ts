@@ -68,18 +68,29 @@ export class ConnectionService {
 		// Convertir ClientConfig a ConnectionParams
 		// ClientConfig tiene database: string | null, pero ConnectionParams requiere string
 		// La validación de Zod ya garantiza que database no es null
+		// Para Supabase, la contraseña es requerida, así que si es null o vacía, lanzamos un error
+		if (!validatedConfig.password || validatedConfig.password.trim() === '') {
+			throw new Error(
+				`Password is required for connection to ${validatedConfig.host}:${validatedConfig.port}/${validatedConfig.database}`,
+				{
+					cause: new Error('Password cannot be empty for database connection'),
+				}
+			);
+		}
+		
 		const connectionParams: ConnectionParams = {
 			host: validatedConfig.host,
 			port: validatedConfig.port,
 			database: validatedConfig.database!, // Non-null assertion: Zod garantiza que no es null
 			user: validatedConfig.user,
-			password: validatedConfig.password ?? '',
+			password: validatedConfig.password,
 			applicationName: validatedConfig.applicationName,
 			ssl: validatedConfig.ssl,
 		};
 
 		try {
-			return await this.databaseAdapter.connect(connectionParams);
+			const connection = await this.databaseAdapter.connect(connectionParams);
+			return connection;
 		} catch (error) {
 			throw new Error(
 				`Failed to create connection: ${config.host}:${config.port}/${config.database}`,

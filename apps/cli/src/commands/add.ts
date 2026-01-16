@@ -105,13 +105,7 @@ async function promptClientConfig({ label }: ClientConfigParams): Promise<Enviro
  *
  * @returns Configuración de comparación de esquemas
  */
-async function promptSchemaCompare(): Promise<Config['compareOptions']['schemaCompare']> {
-    const namespacesAnswer = await Enquirer.prompt<{ namespaces: string }>({
-        type: 'input',
-        name: 'namespaces',
-        message: 'Schemas to compare (comma-separated, empty for all):',
-        initial: '',
-    });
+async function promptSchemaCompare(schemas: string[]): Promise<Config['compareOptions']['schemaCompare']> {
 
     const enabledFeaturesPrompt = {
         type: 'multiselect' as const,
@@ -207,12 +201,7 @@ async function promptSchemaCompare(): Promise<Config['compareOptions']['schemaCo
         initial: false,
     });
 
-    const namespaces = namespacesAnswer.namespaces.trim()
-        ? namespacesAnswer.namespaces
-              .split(',')
-              .map((n: string) => n.trim())
-              .filter((n: string) => n !== '')
-        : [];
+    const namespaces = schemas;
 
     const roles = rolesAnswer.roles.trim()
         ? rolesAnswer.roles
@@ -291,7 +280,10 @@ function getDefaultSchemaCompare(): Config['compareOptions']['schemaCompare'] {
         dropMissingAggregate: false,
         dropMissingRLSPolicy: false,
         roles: [],
-        crossSchemaForeignKeys: undefined,
+        crossSchemaForeignKeys: {
+            enabled: false,
+            mode: 'strict',
+        },
     };
 }
 
@@ -350,12 +342,33 @@ async function promptCompareOptions(): Promise<Config['compareOptions']> {
         },
     ]);
 
+    // Siempre solicitar schemas primero, independientemente del modo
+    const schemasAnswer = await Enquirer.prompt<{ schemas: string }>({
+        type: 'input',
+        name: 'schemas',
+        message: 'Schemas to compare (comma-separated, empty for all):',
+        initial: '',
+    });
+
+    const schemas = schemasAnswer.schemas.trim()
+        ? schemasAnswer.schemas
+              .split(',')
+              .map((s: string) => s.trim())
+              .filter((s: string) => s !== '')
+        : [];
+
     let schemaCompare: Config['compareOptions']['schemaCompare'];
 
     if (modeAnswer.mode === 'default') {
-        schemaCompare = getDefaultSchemaCompare();
+        schemaCompare = {
+            ...getDefaultSchemaCompare(),
+            namespaces: schemas,
+        };
     } else {
-        schemaCompare = await promptSchemaCompare();
+        schemaCompare = {
+            ...(await promptSchemaCompare(schemas)),
+            namespaces: schemas,
+        };
     }
 
     return {

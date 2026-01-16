@@ -36,6 +36,8 @@ export class SequenceComparatorService {
 		const { source, target } = params;
 		const scripts: string[] = [];
 
+		// Contar secuencias que se van a crear
+		const sequencesToCreate: string[] = [];
 		for (const sequenceKey in source) {
 			const sourceSequence = source[sequenceKey];
 			const targetSequence = target[sequenceKey];
@@ -44,8 +46,22 @@ export class SequenceComparatorService {
 				continue;
 			}
 
-			// Solo generar script si la secuencia no existe en target
 			if (!targetSequence) {
+				sequencesToCreate.push(sequenceKey);
+			}
+		}
+
+		// Agregar comentario de inicio si hay secuencias para crear
+		if (sequencesToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push(`-- SEQUENCES: Start (${sequencesToCreate.length} sequence(s) to create)\n`);
+			scripts.push('-- ============================================\n');
+		}
+
+		// Generar scripts CREATE para secuencias que existen en source pero no en target
+		for (const sequenceKey of sequencesToCreate) {
+			const sourceSequence = source[sequenceKey];
+			if (sourceSequence) {
 				scripts.push(
 					generateCreateSequenceScript(
 						sourceSequence.schema,
@@ -58,6 +74,13 @@ export class SequenceComparatorService {
 					),
 				);
 			}
+		}
+
+		// Agregar comentario de fin si se crearon secuencias
+		if (sequencesToCreate.length > 0) {
+			scripts.push('-- ============================================\n');
+			scripts.push('-- SEQUENCES: End\n');
+			scripts.push('-- ============================================\n');
 		}
 
 		return scripts;

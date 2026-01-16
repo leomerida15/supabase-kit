@@ -110,7 +110,7 @@ export class MigrationService {
 		}
 
 		const patchesDirectory = resolve(
-			config.migrationOptions.patchesDirectory.startsWith('/')
+			config.migrationOptions.patchesDirectory.startsWith('-')
 				? config.migrationOptions.patchesDirectory
 				: process.cwd(),
 			config.migrationOptions.patchesDirectory,
@@ -120,6 +120,11 @@ export class MigrationService {
 		const tableName = config.migrationOptions.historyTableName;
 		const tableSchema = config.migrationOptions.historyTableSchema;
 
+		// Validar que el usuario esté presente (requerido para Supabase pooler)
+		if (!clientConfig.user || clientConfig.user.trim() === '') {
+			throw new Error('User is required in client configuration');
+		}
+
 		return {
 			patchesDirectory,
 			migrationHistory: {
@@ -127,7 +132,7 @@ export class MigrationService {
 				tableSchema,
 				fullTableName: `"${tableSchema}"."${tableName}"`,
 				primaryKeyName: `"${tableName}_pkey"`,
-				tableOwner: clientConfig.user || 'postgres',
+				tableOwner: clientConfig.user,
 			},
 		};
 	}
@@ -239,15 +244,7 @@ export class MigrationService {
 					// Leer y ejecutar patch
 					const parsedPatch = await this.patchReader.readPatch(patchFileInfo);
 
-					// Marcar como IN_PROGRESS
-					await this.historyService.updateRecordToHistoryTable({
-						connection,
-						patchInfo: patchFileInfo,
-						status: PatchStatusEnum.IN_PROGRESS,
-						config: migrationConfig,
-					});
-
-					// Ejecutar patch
+					// Ejecutar patch (no guardamos estado IN_PROGRESS en Supabase)
 					const executionResult = await this.patchExecutor.executePatch({
 						connection,
 						blocks: parsedPatch.blocks,
@@ -324,7 +321,7 @@ export class MigrationService {
 				throw new Error(`The patch file ${patchFileName} does not exist in ${migrationConfig.patchesDirectory}!`);
 			}
 
-			// Registrar como DONE sin ejecutar
+			// Registrar como DONE sin ejecutar (statements vacío ya que no se ejecutó)
 			await this.historyService.addRecordToHistoryTable({
 				connection,
 				patchInfo: {
@@ -332,6 +329,7 @@ export class MigrationService {
 					status: PatchStatusEnum.DONE,
 				},
 				config: migrationConfig,
+				statements: [], // Array vacío ya que no se ejecutó el script
 			});
 		} finally {
 			await this.databaseAdapter.close({ connection });

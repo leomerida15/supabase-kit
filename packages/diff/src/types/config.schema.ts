@@ -71,6 +71,8 @@ export const SchemaCompareSchema = z.object({
 	enableViews: z.boolean().optional(),
 	enableMaterializedViews: z.boolean().optional(),
 	enableFunctions: z.boolean().optional(),
+	useManualFunctionCheck: z.boolean().optional(),
+	excludeSuperuserFunctions: z.boolean().optional(),
 	enableAggregates: z.boolean().optional(),
 	enableForeignKeys: z.boolean().optional(),
 	enableRLSPolicies: z.boolean().optional(),

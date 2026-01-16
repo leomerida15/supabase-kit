@@ -4,8 +4,11 @@
  * @module cli/commands/migrate
  */
 
+import { existsSync, readdirSync } from 'fs';
+import { join } from 'path';
 import Enquirer from 'enquirer';
-import { PgDiff, type EventListener } from '@pkg/diff';
+import { PgDiff, type EventListener, PatchStatus, ConnectionService, BunDatabaseAdapter } from '@pkg/diff';
+import type { DatabaseConnection } from '@pkg/diff';
 import { loadComparison, listApplications, listComparisons } from '../utils/config.js';
 
 /**
@@ -62,6 +65,27 @@ export async function handleMigrateCommand(): Promise<void> {
         // Cargar configuración
         const config = loadComparison({ applicationName, comparisonName });
 
+        // Siempre solicitar los schemas al usuario
+        const existingSchemas = config.compareOptions.schemaCompare.namespaces || [];
+        const initialValue = existingSchemas.length > 0 ? existingSchemas.join(', ') : '';
+
+        const schemasAnswer = await Enquirer.prompt<{ schemas: string }>({
+            type: 'input',
+            name: 'schemas',
+            message: 'Schemas to migrate (comma-separated, empty for all):',
+            initial: initialValue,
+        });
+
+        const schemas = schemasAnswer.schemas.trim()
+            ? schemasAnswer.schemas
+                  .split(',')
+                  .map((s: string) => s.trim())
+                  .filter((s: string) => s !== '')
+            : [];
+
+        // Actualizar la configuración con los schemas seleccionados
+        config.compareOptions.schemaCompare.namespaces = schemas;
+
         // Validar que patchesDirectory esté configurado
         if (!config.migrationOptions.patchesDirectory) {
             throw new Error(
@@ -98,18 +122,171 @@ export async function handleMigrateCommand(): Promise<void> {
             message: `Password for ${targetClient.user}@${targetClient.host}:${targetClient.port}/${targetClient.database}:`,
         });
 
+        // Validar que la contraseña no esté vacía
+        if (!passwordAnswer.password || passwordAnswer.password.trim() === '') {
+            throw new Error('Password is required for database connection');
+        }
+
         // Agregar password a la configuración
         const configWithPassword = {
             ...config,
             sourceClient: {
                 ...config.sourceClient,
-                password: optionsAnswer.toSourceClient ? passwordAnswer.password || null : null,
+                password: optionsAnswer.toSourceClient ? passwordAnswer.password : null,
             },
             targetClient: {
                 ...config.targetClient,
-                password: !optionsAnswer.toSourceClient ? passwordAnswer.password || null : null,
+                password: !optionsAnswer.toSourceClient ? passwordAnswer.password : null,
             },
         };
+
+        // Listar migraciones locales y consultar su estado en la base de datos
+        console.log('\n📋 Listing local migrations and checking status...\n');
+
+        const patchesDir = config.migrationOptions.patchesDirectory;
+        const patchesDirPath = join(process.cwd(), patchesDir);
+
+        if (!existsSync(patchesDirPath)) {
+            throw new Error(`Patches directory does not exist: ${patchesDirPath}`);
+        }
+
+        const files = readdirSync(patchesDirPath);
+        const sqlFiles = files.filter((file) => file.endsWith('.sql')).sort();
+
+        if (sqlFiles.length === 0) {
+            console.log(`❌ No .sql files found in ${patchesDir}\n`);
+            console.log('💡 Use the "compare" command to generate migration patches.\n');
+            return;
+        }
+
+        // Crear servicios para consultar historial
+        const databaseAdapter = new BunDatabaseAdapter();
+        const connectionService = new ConnectionService({ databaseAdapter });
+
+        // Obtener información de la tabla de historial
+        const historyTableSchema = config.migrationOptions.historyTableSchema;
+        const historyTableName = config.migrationOptions.historyTableName;
+        const fullTableName = `"${historyTableSchema}"."${historyTableName}"`;
+
+        console.log('📊 Migration status:\n');
+
+        // Crear conexión para consultar el estado
+        let connection: DatabaseConnection | null = null;
+
+        try {
+            connection = await connectionService.createConnection({
+                config: configWithPassword.targetClient,
+            });
+
+            // Consultar historial para cada patch
+            const statusResults: Array<{
+                filename: string;
+                status: string;
+            }> = [];
+
+            for (const filename of sqlFiles) {
+                // Extraer versión y nombre del archivo (formato: TIMESTAMP_name.sql)
+                const match = filename.match(/^(\d{14})_(.+)\.sql$/);
+                if (!match) {
+                    continue;
+                }
+
+                const version = match[1];
+
+                try {
+                    // CONSULTA A LA BASE DE DATOS para verificar si la migración ya se aplicó (estructura Supabase)
+                    const statusQuery = `
+                        SELECT "version"
+                        FROM ${fullTableName}
+                        WHERE "version" = $1
+                        LIMIT 1;
+                    `;
+
+                    const results = await databaseAdapter.query<{
+                        version: string;
+                    }>({
+                        connection,
+                        sql: statusQuery,
+                        params: [version],
+                    });
+
+                    if (results.length > 0) {
+                        // La migración existe en la tabla de historial = ya aplicada
+                        statusResults.push({
+                            filename,
+                            status: PatchStatus.DONE,
+                        });
+                    } else {
+                        // La migración no existe en la tabla de historial (pendiente)
+                        statusResults.push({
+                            filename,
+                            status: PatchStatus.TO_APPLY,
+                        });
+                    }
+                } catch (error) {
+                    // Si hay error al consultar, marcar como pendiente
+                    statusResults.push({
+                        filename,
+                        status: PatchStatus.TO_APPLY,
+                    });
+                }
+            }
+
+            // Mostrar tabla de estados
+            const statusLabels: Record<string, string> = {
+                [PatchStatus.TO_APPLY]: '⏳ Pending',
+                [PatchStatus.DONE]: '✅ Applied',
+            };
+
+            console.log('Status      | File');
+            console.log('------------|----------------------------------------');
+
+            statusResults.forEach((result) => {
+                const statusLabel = statusLabels[result.status] || result.status;
+                console.log(`${statusLabel.padEnd(12)} | ${result.filename}`);
+            });
+
+            // Encontrar la próxima migración a aplicar
+            const nextMigration = statusResults.find(
+                (result) => result.status === PatchStatus.TO_APPLY,
+            );
+
+            if (nextMigration) {
+                console.log(`\n💡 Next migration to apply: ${nextMigration.filename}\n`);
+            } else {
+                console.log('\n✅ All migrations have been applied.\n');
+            }
+        } catch (error) {
+            // Si la tabla no existe, todos los patches están pendientes
+            if (error instanceof Error && error.message.includes('does not exist')) {
+                console.log('📋 All patches are pending (history table does not exist)\n');
+                sqlFiles.forEach((filename) => {
+                    console.log(`   ⏳ ${filename}`);
+                });
+                if (sqlFiles.length > 0) {
+                    console.log(`\n💡 Next migration to apply: ${sqlFiles[0]}\n`);
+                }
+            } else {
+                throw error;
+            }
+        } finally {
+            if (connection) {
+                await databaseAdapter.close({ connection });
+            }
+        }
+
+        // Confirmar antes de ejecutar
+        const confirmAnswer = await Enquirer.prompt<{ confirm: boolean }>({
+            type: 'confirm',
+            name: 'confirm',
+            message: 'Do you want to proceed with the migration?',
+            initial: true,
+        });
+
+        if (!confirmAnswer.confirm) {
+            console.log('\n❌ Migration cancelled by user.\n');
+            return;
+        }
 
         console.log('\n📋 Configuration:');
         console.log(`   Application: ${applicationName}`);
@@ -152,7 +329,15 @@ export async function handleMigrateCommand(): Promise<void> {
         }
     } catch (error) {
         if (error instanceof Error) {
-            throw new Error(`Error executing migration: ${error.message}`, { cause: error });
+            // Mostrar el error completo incluyendo la causa si existe
+            let errorMessage = `Error executing migration: ${error.message}`;
+            if (error.cause instanceof Error) {
+                errorMessage += `\n   Cause: ${error.cause.message}`;
+                if (error.cause.stack && process.env.DEBUG) {
+                    errorMessage += `\n   Stack: ${error.cause.stack}`;
+                }
+            }
+            throw new Error(errorMessage, { cause: error });
         }
         throw error;
     }
