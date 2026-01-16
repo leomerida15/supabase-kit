@@ -7,7 +7,6 @@
  * @module core/comparison/services/table-comparator
  */
 
-import { z } from 'zod';
 import type { CompareTablesParams } from '../domain/types/comparison.types.js';
 import { CompareTablesParamsSchema } from '../domain/schemas/comparison.schema.js';
 import {
@@ -20,6 +19,18 @@ import {
 	generateAlterColumnNullableScript,
 	generateAlterColumnDefaultScript,
 } from './sql-generator/index.js';
+
+/**
+ * Patrones de DEFAULT que generan valores aleatorios y pueden violar FKs.
+ * Estos patrones deben omitirse cuando la columna tiene una FK y la tabla tiene datos.
+ */
+const RANDOM_DEFAULT_PATTERNS = [
+	/gen_random_uuid\s*\(\s*\)/i,
+	/uuid_generate_v[1-5]\s*\(\s*\)/i,
+	/uuid_generate_v4\s*\(\s*\)/i,
+	/random\s*\(\s*\)/i,
+	/nextval\s*\(/i,
+];
 
 /**
  * Servicio comparador de tablas.
@@ -42,8 +53,21 @@ export class TableComparatorService {
 			});
 		}
 
-		const { source, target, sourceTableStructures, targetTableStructures, config, targetTableHasData } = params;
+		const { source, target, sourceTableStructures, targetTableStructures, config, targetTableHasData, sourceForeignKeys } = params;
 		const scripts: string[] = [];
+		
+		// Crear un mapa de columnas que tienen FK asociada: "schema.table.column" -> true
+		const columnsWithFK = new Set<string>();
+		if (sourceForeignKeys) {
+			for (const fkKey in sourceForeignKeys) {
+				const fk = sourceForeignKeys[fkKey];
+				if (fk) {
+					for (const column of fk.columns) {
+						columnsWithFK.add(`${fk.schema}.${fk.tableName}.${column}`);
+					}
+				}
+			}
+		}
 
 		// Contar tablas que se van a crear
 		const tablesToCreate: string[] = [];
@@ -129,6 +153,30 @@ export class TableComparatorService {
 					// Si es así, forzar nullable para evitar errores de foreign key
 					const tableHasData = targetTableHasData?.[tableKey] === true;
 					const forceNullable = tableHasData && !sourceColumn.isNullable;
+					
+					// Verificar si la columna tiene una FK asociada y un DEFAULT que genera valores aleatorios
+					// Si es así, debemos omitir el DEFAULT para evitar violaciones de FK
+					const columnHasFK = columnsWithFK.has(`${sourceTable.schema}.${sourceTable.name}.${columnName}`);
+					const hasRandomDefault = Boolean(sourceColumn.defaultValue) && 
+						RANDOM_DEFAULT_PATTERNS.some(pattern => pattern.test(sourceColumn.defaultValue || ''));
+					const skipDefault = tableHasData && columnHasFK && hasRandomDefault;
+
+					// Agregar comentario informativo si se fuerza nullable
+					if (forceNullable) {
+						columnChanges.push(
+							`-- NOTE: Column "${columnName}" added as NULL because table has existing data.\n` +
+								`-- Update NULL values with valid foreign key references before creating the foreign key constraint.\n`,
+						);
+					}
+					
+					// Agregar comentario si se omite el DEFAULT por FK
+					if (skipDefault) {
+						columnChanges.push(
+							`-- NOTE: Column "${columnName}" DEFAULT omitted because it has a foreign key constraint.\n` +
+								`-- The default (${sourceColumn.defaultValue}) would generate values that violate the FK.\n` +
+								`-- Update NULL values with valid foreign key references before creating the foreign key constraint.\n`,
+						);
+					}
 
 					columnChanges.push(
 						generateAddColumnScript(
@@ -137,6 +185,7 @@ export class TableComparatorService {
 							columnName,
 							sourceColumn,
 							forceNullable,
+							!!skipDefault,
 						),
 					);
 				}

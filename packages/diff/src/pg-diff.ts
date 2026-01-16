@@ -186,13 +186,44 @@ export class PgDiff {
 						: Object.keys(targetObjects.schemas || {});
 					const schemasStr = schemasList.map((s) => `'${s.replace(/'/g, "''")}'`).join(',');
 
+					// Actualizar estadísticas antes de consultar reltuples para asegurar datos precisos
+					// ANALYZE actualiza reltuples automáticamente y funciona con pool de conexiones
+					this.events.emit({
+						event: 'analyze',
+						message: 'Updating table statistics (ANALYZE)...',
+						progress: 58,
+					});
+
+					for (const schema of schemasList) {
+						try {
+							await this.databaseAdapter.query({
+								connection: targetConnection,
+								sql: `ANALYZE "${schema.replace(/"/g, '""')}";`,
+							});
+						} catch (analyzeError) {
+							// Si falla ANALYZE en un schema, continuar con los demás
+							// Puede fallar por permisos, pero no es crítico - usaremos estadísticas existentes
+							this.events.emit({
+								event: 'analyze',
+								message: `Warning: ANALYZE failed for schema "${schema}", using existing statistics`,
+								progress: 59,
+							});
+						}
+					}
+
 					// Query optimizada usando pg_class.reltuples (estadísticas del sistema)
-					// reltuples > 0 indica que hay datos (después de VACUUM/ANALYZE)
+					// reltuples > 0 indica que hay datos (ahora actualizado con ANALYZE ejecutado arriba)
+					// reltuples = -1 indica que nunca se ha analizado, requiere verificación adicional
 					const hasDataQuery = `
 						SELECT 
 							n.nspname as schema,
 							c.relname as table_name,
-							COALESCE(c.reltuples, 0) > 0 as has_data
+							c.reltuples,
+							CASE 
+								WHEN c.reltuples = -1 THEN NULL  -- Requiere verificación adicional
+								WHEN COALESCE(c.reltuples, 0) > 0 THEN true
+								ELSE false
+							END as has_data
 						FROM pg_class c
 						JOIN pg_namespace n ON c.relnamespace = n.oid
 						WHERE c.relkind = 'r'  -- solo tablas regulares
@@ -202,20 +233,49 @@ export class PgDiff {
 					const results = await this.databaseAdapter.query<{
 						schema: string;
 						table_name: string;
-						has_data: boolean;
+						reltuples: number;
+						has_data: boolean | null;
 					}>({
 						connection: targetConnection,
 						sql: hasDataQuery,
 					});
 
 					// Construir mapa con formato schema.table como clave
+					// Para tablas con reltuples = -1, hacer verificación adicional con EXISTS
 					for (const row of results) {
 						const tableKey = `${row.schema}.${row.table_name}`;
-						targetTableHasData[tableKey] = row.has_data;
+						
+						if (row.has_data === null) {
+							// reltuples = -1, verificar con EXISTS (muy rápido, se detiene en primera fila)
+							try {
+								const existsQuery = `SELECT EXISTS (SELECT 1 FROM "${row.schema}"."${row.table_name}" LIMIT 1) as has_data`;
+								const existsResult = await this.databaseAdapter.query<{ has_data: boolean }>({
+									connection: targetConnection,
+									sql: existsQuery,
+								});
+								targetTableHasData[tableKey] = existsResult[0]?.has_data || false;
+							} catch {
+								// Si falla, asumir que no hay datos por seguridad
+								targetTableHasData[tableKey] = false;
+							}
+						} else {
+							targetTableHasData[tableKey] = row.has_data;
+						}
 					}
+
+					this.events.emit({
+						event: 'analyze',
+						message: `Checked data existence for ${Object.keys(targetTableHasData).length} tables`,
+						progress: 60,
+					});
 				} catch (error) {
 					// Si falla la consulta, asumir que no hay datos para evitar romper el flujo
 					// Esto puede pasar si no hay permisos o si las tablas no existen aún
+					this.events.emit({
+						event: 'analyze',
+						message: 'Warning: Could not check table data, assuming empty tables',
+						progress: 60,
+					});
 				}
 			}
 

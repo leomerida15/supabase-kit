@@ -77,6 +77,16 @@ export class ForeignKeyComparatorService {
 			scripts.push('-- ============================================\n');
 			scripts.push(`-- FOREIGN KEYS: Start (${foreignKeysToCreate.length} foreign key(s) to create)\n`);
 			scripts.push('-- ============================================\n');
+			scripts.push(
+				'-- NOTE: If any columns referenced by these foreign keys contain NULL values,\n',
+			);
+			scripts.push(
+				'-- update them with valid foreign key references before executing this section.\n',
+			);
+			scripts.push(
+				'-- PostgreSQL will validate all existing data when creating foreign key constraints.\n',
+			);
+			scripts.push('-- ============================================\n');
 		}
 
 		// Generar scripts CREATE para claves foráneas que existen en source pero no en target

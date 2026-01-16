@@ -191,6 +191,12 @@ export interface CompareTablesParams {
 	 * Clave: tableKey (schema.table), Valor: boolean (true = tiene datos)
 	 */
 	targetTableHasData?: Record<string, boolean>;
+
+	/**
+	 * Foreign keys del source para detectar columnas que tienen FK asociada.
+	 * Se usa para omitir DEFAULT gen_random_uuid() en columnas con FK cuando la tabla tiene datos.
+	 */
+	sourceForeignKeys?: Record<string, { schema: string; tableName: string; columns: string[] }>;
 }
 
 /**

@@ -243,7 +243,9 @@ export class MigrationHistoryService {
 
 	/**
 	 * Extrae el autor del header del script SQL.
-	 * Busca el patrón: /*** SCRIPT AUTHOR: Nombre 
+	 * Busca los patrones:
+	 * - Formato nuevo: -- SCRIPT AUTHOR: Nombre
+	 * - Formato viejo: /*** SCRIPT AUTHOR: Nombre **​/
 	 *
 	 * @param script - Script SQL completo
 	 * @returns Nombre del autor o null si no se encuentra
@@ -253,10 +255,16 @@ export class MigrationHistoryService {
 			return null;
 		}
 
-		// Buscar el patrón /*** SCRIPT AUTHOR: Nombre ***/
-		const match = script.match(/\/\*\*\*\s*SCRIPT AUTHOR:\s*([^*]+)\s*\*\*\*\//i);
-		if (match && match[1]) {
-			return match[1].trim();
+		// Buscar el patrón nuevo: -- SCRIPT AUTHOR: Nombre (hasta el fin de línea)
+		const newFormatMatch = script.match(/--\s*SCRIPT AUTHOR:\s*(.+?)(?:\r?\n|$)/i);
+		if (newFormatMatch && newFormatMatch[1]) {
+			return newFormatMatch[1].trim();
+		}
+
+		// Buscar el patrón viejo: /*** SCRIPT AUTHOR: Nombre ***/
+		const oldFormatMatch = script.match(/\/\*\*\*\s*SCRIPT AUTHOR:\s*([^*]+)\s*\*\*\*\//i);
+		if (oldFormatMatch && oldFormatMatch[1]) {
+			return oldFormatMatch[1].trim();
 		}
 
 		return null;

@@ -99,6 +99,21 @@ export class ObjectComparisonService {
 			const target = targetObjects.tables || {};
 			const sourceTableStructures = sourceObjects.tableStructures || undefined;
 			const targetTableStructures = targetObjects.tableStructures || undefined;
+			
+			// Extraer información de FKs del source para detectar columnas con FK
+			const sourceFKs = sourceObjects.foreignKeys || {};
+			const sourceForeignKeys: Record<string, { schema: string; tableName: string; columns: string[] }> = {};
+			for (const fkKey in sourceFKs) {
+				const fk = sourceFKs[fkKey];
+				if (fk) {
+					sourceForeignKeys[fkKey] = {
+						schema: fk.schema,
+						tableName: fk.tableName,
+						columns: fk.columns,
+					};
+				}
+			}
+			
 			allScripts.push(
 				...tableComparator.compare({
 					source,
@@ -109,6 +124,7 @@ export class ObjectComparisonService {
 						dropMissingTable: config.dropMissingTable,
 					},
 					targetTableHasData: params.targetTableHasData,
+					sourceForeignKeys,
 				}),
 			);
 		}

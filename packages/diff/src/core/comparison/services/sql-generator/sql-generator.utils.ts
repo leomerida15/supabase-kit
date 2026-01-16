@@ -388,6 +388,8 @@ export function generateCreateTableScript(
  * @param tableName - Nombre de la tabla
  * @param columnName - Nombre de la columna
  * @param columnStructure - Estructura de la columna
+ * @param forceNullable - Si es true, fuerza la columna a ser nullable (para tablas con datos)
+ * @param skipDefault - Si es true, omite el DEFAULT (para columnas con FK y default aleatorio)
  * @returns Script SQL
  */
 export function generateAddColumnScript(
@@ -396,6 +398,7 @@ export function generateAddColumnScript(
 	columnName: string,
 	columnStructure: TableColumnStructure,
 	forceNullable?: boolean,
+	skipDefault?: boolean,
 ): string {
 	const fullTableName = `"${schema}"."${tableName}"`;
 	const parts: string[] = [`"${columnName}"`];
@@ -419,8 +422,9 @@ export function generateAddColumnScript(
 	}
 
 	// DEFAULT
-	// Si forceNullable es true, omitir DEFAULT para evitar valores inválidos
-	if (!forceNullable && columnStructure.defaultValue) {
+	// Si forceNullable o skipDefault es true, omitir DEFAULT para evitar valores inválidos
+	// skipDefault se usa cuando la columna tiene una FK y un DEFAULT que genera valores aleatorios
+	if (!forceNullable && !skipDefault && columnStructure.defaultValue) {
 		parts.push(`DEFAULT ${columnStructure.defaultValue}`);
 	}
 
@@ -543,7 +547,24 @@ export function generateCreateForeignKeyScript(
 	const referencedColumnsStr = referencedColumns.map((c) => `"${c}"`).join(', ');
 	const onDeleteClause = onDelete ? ` ON DELETE ${onDelete}` : '';
 	const onUpdateClause = onUpdate ? ` ON UPDATE ${onUpdate}` : '';
-	return `ALTER TABLE ${fullTableName} ADD CONSTRAINT "${constraintName}" FOREIGN KEY (${columnsStr}) REFERENCES ${fullReferencedTable} (${referencedColumnsStr})${onDeleteClause}${onUpdateClause};\n\n`;
+	// PostgreSQL no soporta IF NOT EXISTS con ADD CONSTRAINT, usar DO block para verificar existencia
+	const escapedSchema = schema.replace(/'/g, "''");
+	const escapedTableName = tableName.replace(/'/g, "''");
+	const escapedConstraintName = constraintName.replace(/'/g, "''");
+	return `DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint c
+        JOIN pg_class t ON c.conrelid = t.oid
+        JOIN pg_namespace n ON t.relnamespace = n.oid
+        WHERE n.nspname = '${escapedSchema}'
+        AND t.relname = '${escapedTableName}'
+        AND c.conname = '${escapedConstraintName}'
+    ) THEN
+        ALTER TABLE ${fullTableName} ADD CONSTRAINT "${constraintName}" FOREIGN KEY (${columnsStr}) REFERENCES ${fullReferencedTable} (${referencedColumnsStr})${onDeleteClause}${onUpdateClause};
+    END IF;
+END $$;\n\n`;
 }
 
 /**
