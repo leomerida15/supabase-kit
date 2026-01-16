@@ -10,6 +10,9 @@
     "publishConfig": {
         "access": "public"
     },
+    "files": [
+        "dist"
+    ],
     "bin": {
         "supa-kit": "dist/index.js"
     },
