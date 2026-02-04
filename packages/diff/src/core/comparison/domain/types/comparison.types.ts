@@ -308,6 +308,12 @@ export interface CompareForeignKeysParams {
 	 * Incluye namespaces y crossSchemaForeignKeys para validación.
 	 */
 	config: Pick<SchemaCompare, 'namespaces' | 'crossSchemaForeignKeys'>;
+
+	/**
+	 * Claves de tablas que existen en source pero no en target (tablas a crear).
+	 * Si se pasa, el comparador asegurará incluir todas las FKs del source para esas tablas.
+	 */
+	tableKeysToCreate?: string[];
 }
 
 /**

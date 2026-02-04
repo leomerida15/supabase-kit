@@ -590,8 +590,62 @@ export function generateCreateRLSPolicyScript(
 ): string {
 	const fullTableName = `"${schema}"."${tableName}"`;
 	const rolesClause = roles.length > 0 ? ` TO ${roles.join(', ')}` : '';
-	const orReplace = useOrReplace ? ' OR REPLACE' : '';
-	return `CREATE${orReplace} POLICY "${policyName}" ON ${fullTableName} FOR ${command}${rolesClause} USING (${definition});\n\n`;
+	
+	// Normalizar comando y definición
+	const normalizedCommand = command.trim().toUpperCase();
+	const normalizedDefinition = definition.trim();
+	
+	// Normalizar definición vacía a 'true' para evitar errores de sintaxis
+	const safeDefinition = normalizedDefinition === '' || normalizedDefinition === '()' 
+		? 'true' 
+		: normalizedDefinition;
+	
+	// Determinar las cláusulas según el tipo de comando
+	let clause: string;
+	const isInsert = normalizedCommand === 'INSERT';
+	const isAll = normalizedCommand === 'ALL';
+	
+	if (isAll) {
+		// Para ALL, PostgreSQL requiere ambas cláusulas
+		clause = `USING (${safeDefinition}) WITH CHECK (${safeDefinition})`;
+	} else if (isInsert) {
+		// Para INSERT, usar WITH CHECK
+		clause = `WITH CHECK (${safeDefinition})`;
+	} else {
+		// Para SELECT, UPDATE, DELETE, usar USING
+		clause = `USING (${safeDefinition})`;
+	}
+	
+	// Si useOrReplace es false, envolver en DO block con verificación de existencia
+	if (!useOrReplace) {
+		// Escapar valores para prevenir SQL injection
+		const escapedSchema = schema.replace(/'/g, "''");
+		const escapedTableName = tableName.replace(/'/g, "''");
+		const escapedPolicyName = policyName.replace(/'/g, "''");
+		
+		// Escapar el nombre de la política en el EXECUTE también
+		const escapedPolicyNameInExecute = policyName.replace(/"/g, '""');
+		
+		return `DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policies
+        WHERE schemaname = '${escapedSchema}'
+          AND tablename = '${escapedTableName}'
+          AND policyname = '${escapedPolicyName}'
+    ) THEN
+        EXECUTE $policy$CREATE POLICY "${escapedPolicyNameInExecute}"
+          ON ${fullTableName}
+          FOR ${command}${rolesClause}
+          ${clause};$policy$;
+    END IF;
+END $$;\n\n`;
+	}
+	
+	// Si useOrReplace es true, usar CREATE OR REPLACE POLICY directamente
+	const orReplace = ' OR REPLACE';
+	return `CREATE${orReplace} POLICY "${policyName}" ON ${fullTableName} FOR ${command}${rolesClause} ${clause};\n\n`;
 }
 
 /**

@@ -200,6 +200,14 @@ export class ObjectComparisonService {
 			const foreignKeyComparator = new ForeignKeyComparatorService();
 			const source = sourceObjects.foreignKeys || {};
 			const target = targetObjects.foreignKeys || {};
+			const sourceTables = sourceObjects.tables || {};
+			const targetTables = targetObjects.tables || {};
+			const tableKeysToCreate: string[] = [];
+			for (const tableKey in sourceTables) {
+				if (sourceTables[tableKey] && !targetTables[tableKey]) {
+					tableKeysToCreate.push(tableKey);
+				}
+			}
 			allScripts.push(
 				...foreignKeyComparator.compare({
 					source,
@@ -208,6 +216,7 @@ export class ObjectComparisonService {
 						namespaces: config.namespaces,
 						crossSchemaForeignKeys: config.crossSchemaForeignKeys,
 					},
+					tableKeysToCreate,
 				}),
 			);
 		}
