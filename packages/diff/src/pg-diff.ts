@@ -166,6 +166,28 @@ export class PgDiff {
 					: undefined,
 			});
 			this.events.emit({ event: 'analyze', message: `Collected ${Object.keys(sourceObjects.tables || {}).length} tables from source`, progress: 40 });
+			const sourceFkCount = Object.keys(sourceObjects.foreignKeys || {}).length;
+			this.events.emit({
+				event: 'analyze',
+				message: `Source: ${sourceFkCount} foreign key(s)`,
+				progress: 41,
+			});
+			const fkByTable: Record<string, number> = {};
+			for (const key of Object.keys(sourceObjects.foreignKeys || {})) {
+				const parts = key.split('.');
+				if (parts.length >= 2) {
+					const tableKey = `${parts[0]}.${parts[1]}`;
+					fkByTable[tableKey] = (fkByTable[tableKey] ?? 0) + 1;
+				}
+			}
+			const relationTableKey = 'public.form_case_two_target_population_relation';
+			if (fkByTable[relationTableKey] !== undefined) {
+				this.events.emit({
+					event: 'analyze',
+					message: `Source: table ${relationTableKey} has ${fkByTable[relationTableKey]} FK(s)`,
+					progress: 42,
+				});
+			}
 
 			// Recopilar objetos del catálogo target
 			this.events.emit({ event: 'analyze', message: 'Collecting objects from target database...', progress: 45 });

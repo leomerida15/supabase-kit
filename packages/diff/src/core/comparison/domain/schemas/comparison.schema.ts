@@ -80,6 +80,7 @@ export const CompareForeignKeysParamsSchema = BaseCompareParamsSchema.extend({
 			})
 			.optional(),
 	}),
+	tableKeysToCreate: z.array(z.string()).optional(),
 });
 
 /**

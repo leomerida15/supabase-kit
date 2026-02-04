@@ -72,6 +72,32 @@ export class ForeignKeyComparatorService {
 			}
 		}
 
+		// Safeguard: asegurar FKs para tablas que solo existen en source (tablas a crear)
+		const { tableKeysToCreate } = params;
+		if (tableKeysToCreate && tableKeysToCreate.length > 0) {
+			const createdSet = new Set(foreignKeysToCreate);
+			for (const tableKey of tableKeysToCreate) {
+				const prefix = `${tableKey}.`;
+				for (const fkKey in source) {
+					if (!fkKey.startsWith(prefix)) continue;
+					if (target[fkKey]) continue;
+					if (createdSet.has(fkKey)) continue;
+					const sourceFK = source[fkKey];
+					if (!sourceFK) continue;
+					const isCrossSchema = sourceFK.schema !== sourceFK.referencedSchema;
+					if (isCrossSchema && crossSchemaForeignKeys?.enabled) {
+						if (crossSchemaForeignKeys.mode === 'strict') {
+							const localSchemaInConfig = namespaces.includes(sourceFK.schema);
+							const referencedSchemaInConfig = namespaces.includes(sourceFK.referencedSchema);
+							if (!localSchemaInConfig || !referencedSchemaInConfig) continue;
+						}
+					}
+					foreignKeysToCreate.push(fkKey);
+					createdSet.add(fkKey);
+				}
+			}
+		}
+
 		// Agregar comentario de inicio si hay claves foráneas para crear
 		if (foreignKeysToCreate.length > 0) {
 			scripts.push('-- ============================================\n');

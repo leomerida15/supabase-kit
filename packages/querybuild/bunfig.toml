@@ -1,0 +1,14 @@
+[build]
+entrypoints = ["./src/index.ts"]
+outdir = "./dist"
+target = "browser"
+minify = true
+sourcemap = "external"
+format = "esm"
+
+[test]
+preload = ["./test/setup.ts"]
+coverage = true
+
+[install]
+peer = true
