@@ -36,6 +36,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
         schema = 'public' as S,
         column = '*',
         count,
+        head,
         options = {},
         single,
         enabled,
@@ -49,7 +50,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
             let localClient = !schema
                 ? client
                 : (client.schema(schema as string & S) as unknown as typeof client);
-            const QueryBase = localClient.from(table as string).select(column, { count });
+            const QueryBase = localClient.from(table as string).select(column, { count, head });
 
             const QueryFn = QueryBuilder<D, S>(configObj, QueryBase);
 
@@ -57,9 +58,15 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
 
             if (error) throw error;
 
+            const payload = head
+                ? (single ? (null as V) : ([] as V))
+                : single
+                  ? ((data ?? {}) as V)
+                  : ((data ?? []) as V);
+
             return {
                 count: rowCount ?? 0,
-                payload: single ? ((data ?? {}) as V) : ((data ?? []) as V),
+                payload,
             };
         };
 
@@ -74,6 +81,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
                 configObj.limit,
                 single,
                 count,
+                head,
                 table,
                 column,
                 count,
@@ -111,6 +119,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
         options,
         enabled,
         count = 'exact',
+        head,
         ...configObj
     }: SupabaseInfoniteQueryConfig<D> & { table: T }) => {
         type V = TableRow<D[S], T>[];
@@ -119,7 +128,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
             let localClient = !schema
                 ? client
                 : (client.schema(schema) as unknown as typeof client);
-            const QueryBase = localClient.from(table as string).select(column, { count });
+            const QueryBase = localClient.from(table as string).select(column, { count, head });
             const QueryFn = QueryBuilder<D, S>(configObj as any, QueryBase);
 
             const { data, error, count: rowCount } = await QueryFn.abortSignal(signal);
@@ -128,7 +137,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
 
             return {
                 count: rowCount ?? 0,
-                payload: data ?? [],
+                payload: head ? [] : (data ?? []),
             };
         };
 
@@ -137,7 +146,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
         const initQueryKey = GetSupaQueryName<D>({ table, queryKey: ['infinite', ...queryKey] });
 
         return useInfiniteQuery<SupabaseQueryResult<V>, PostgrestError>({
-            queryKey: [initQueryKey, configObj.where, configObj.limit],
+            queryKey: [initQueryKey, configObj.where, configObj.limit, head],
             queryFn: ({ signal }) => fetchData(signal),
             enabled,
             ...(optionsHook as any),

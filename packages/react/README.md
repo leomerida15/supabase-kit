@@ -75,6 +75,16 @@ export const Example = () => {
 
 - where — condition by where how in, is, eq, neq, filter, etc.
 
+**Performance:** When the config (especially `where`, `limit`, etc.) depends on state or props, use `useMemo` so the config reference stays stable and React Query does not refetch unnecessarily:
+
+```typescript
+const config = useMemo(
+    () => ({ table: 'book', where: { eq: { status } }, limit: 10 }),
+    [status]
+);
+const book = useSupaQuery(config);
+```
+
 ```typescript
 'use client';
 import { useSupabase } from '@/createSupabaseTools';

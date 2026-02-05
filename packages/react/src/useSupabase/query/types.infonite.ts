@@ -29,6 +29,10 @@ export interface SupabaseInfoniteQueryConfig<
     };
     limit?: number;
     count?: 'exact' | 'planned' | 'estimated';
+    /**
+     * When true, the select returns only the count (no rows). Useful for counting without loading data.
+     */
+    head?: boolean;
     enabled?: boolean;
 }
 

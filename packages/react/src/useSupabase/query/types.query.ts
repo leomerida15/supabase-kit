@@ -71,6 +71,11 @@ export interface SupabaseQueryConfig<
     count?: 'exact' | 'planned' | 'estimated';
 
     /**
+     * When true, the select returns only the count (no rows). Useful for counting without loading data.
+     */
+    head?: boolean;
+
+    /**
      * Whether the hook is enabled. Defaults to `true`.
      */
     enabled?: boolean;
