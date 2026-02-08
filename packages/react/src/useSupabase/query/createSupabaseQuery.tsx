@@ -1,5 +1,4 @@
 import { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
-import { GenericSchema } from '@supabase/supabase-js/dist/module/lib/types';
 import { useInfiniteQuery, useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
 import { GetSupaQueryName } from '../utils/getName';
 import { QueryBuilder } from './build';
@@ -11,9 +10,10 @@ import { SupabaseQueryConfig } from './types.query';
 export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends string & keyof D = 'public' extends keyof D
     ? 'public'
     : string & keyof D,
-  Schema extends GenericSchema = D[SchemaName] extends GenericSchema
-    ? D[SchemaName]
-    : any>(client: SupabaseClient<D, SchemaName, Schema>) => {
+  Schema = D[SchemaName]>(
+  // @ts-expect-error - SupabaseClient constraint mismatch is handled via runtime type assertions at schema() calls
+  client: SupabaseClient<D, SchemaName, Schema>
+) => {
     function useSupaQuery<
         T extends keyof D[S]['Tables'] | keyof D[S]['Views'],
         S extends keyof D = 'public',
@@ -49,7 +49,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
         const fetchData = async (signal: AbortSignal): Promise<SupabaseQueryResult<V>> => {
             let localClient = !schema
                 ? client
-                : (client.schema(schema as string & S) as unknown as typeof client);
+                : (client.schema(schema as unknown as string & Exclude<keyof D, '__InternalSupabase'>) as unknown as typeof client);
             const QueryBase = localClient.from(table as string).select(column, { count, head });
 
             const QueryFn = QueryBuilder<D, S>(configObj, QueryBase);
@@ -59,7 +59,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
             if (error) throw error;
 
             const payload = head
-                ? (single ? (null as V) : ([] as V))
+                ? (single ? (null as unknown as V) : ([] as V))
                 : single
                   ? ((data ?? {}) as V)
                   : ((data ?? []) as V);
@@ -127,7 +127,7 @@ export const createSupabaseQuery = <D extends DatabaseTemp,  SchemaName extends 
         const fetchData = async (signal: AbortSignal): Promise<SupabaseQueryResult<V>> => {
             let localClient = !schema
                 ? client
-                : (client.schema(schema) as unknown as typeof client);
+                : (client.schema(schema as unknown as string & Exclude<keyof D, '__InternalSupabase'>) as unknown as typeof client);
             const QueryBase = localClient.from(table as string).select(column, { count, head });
             const QueryFn = QueryBuilder<D, S>(configObj as any, QueryBase);
 

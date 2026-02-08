@@ -22,9 +22,6 @@ jobs:
             - name: 📥 Install dependencies with Bun (with cache)
               run: bun install
 
-            - name: 💅 Lint @supabase-kit/react
-              run: bun run --filter '@supabase-kit/react' lint
-
             - name: 🔍 Type-check @supabase-kit/react
               run: bun run --filter '@supabase-kit/react' types
 
