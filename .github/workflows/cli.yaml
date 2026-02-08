@@ -1,0 +1,36 @@
+name: Deploy @supabase-kit/cli
+
+on:
+    push:
+        branches: [cli]
+
+jobs:
+    deploy:
+        name: Lint, test, build & publish
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: ❇️ Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v1
+              with:
+                  bun-version: latest
+
+            - name: 📥 Install dependencies with Bun (with cache)
+              run: bun install
+
+            - name: 🔍 Type-check @supabase-kit/cli
+              run: bun run --filter '@supabase-kit/cli' types
+
+            - name: 🛠️ Build @supabase-kit/cli
+              run: bun run --filter '@supabase-kit/cli' build
+
+            - name: 🚀 Publish @supabase-kit/cli to npm
+              uses: JS-DevTools/npm-publish@v1
+              with:
+                  token: ${{ secrets.NPM_TOKEN }}
+                  package: packages/cli/package.json
+                  access: public
