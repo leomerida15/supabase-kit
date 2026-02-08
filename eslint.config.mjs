@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import nextPlugin from '@next/eslint-plugin-next';
 import tanstackQuery from '@tanstack/eslint-plugin-query';
 
-export default tseslint.defineConfig(
+export default tseslint.config(
 	// Configuración para los plugins
 	{
 		plugins: {
