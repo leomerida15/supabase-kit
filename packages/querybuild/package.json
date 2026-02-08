@@ -17,7 +17,7 @@
             "default": "./dist/useSupabase/index.js"
         }
     },
-    "name": "@supabase-kit/react",
+    "name": "@supabase-kit/build",
     "author": {
         "name": "leomerida15",
         "email": "dimasmerida15@gmail.com",
