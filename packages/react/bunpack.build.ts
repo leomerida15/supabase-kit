@@ -13,7 +13,6 @@ Bun.build({
     outdir: './dist',
     splitting: false,
     target: 'browser',
-    sourcemap: 'external',
     entrypoints: ['./src/index.ts'],
     // Optimizations for smallest bundle size
     // Define environment
