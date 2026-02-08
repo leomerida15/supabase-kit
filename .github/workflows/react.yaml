@@ -1,0 +1,39 @@
+name: Deploy @supabase-kit/react
+
+on:
+    push:
+        branches: [react]
+
+jobs:
+    deploy:
+        name: Lint, test, build & publish
+
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: ❇️ Checkout repo
+              uses: actions/checkout@v4
+
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v1
+              with:
+                  bun-version: latest
+
+            - name: 📥 Install dependencies with Bun (with cache)
+              run: bun install
+
+            - name: 💅 Lint @supabase-kit/react
+              run: bun run --filter '@supabase-kit/react' lint
+
+            - name: 🔍 Type-check @supabase-kit/react
+              run: bun run --filter '@supabase-kit/react' types
+
+            - name: 🛠️ Build @supabase-kit/react
+              run: bun run --filter '@supabase-kit/react' build
+
+            - name: 🚀 Publish @supabase-kit/react to npm
+              uses: JS-DevTools/npm-publish@v1
+              with:
+                  token: ${{ secrets.NPM_TOKEN }}
+                  package: packages/react/package.json
+                  access: public
