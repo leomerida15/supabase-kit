@@ -1,0 +1,49 @@
+# Despliega la documentación (Docsify) en GitHub Pages
+# Repo: Settings → Pages → Source: GitHub Actions
+
+name: Deploy docs (Docsify)
+
+on:
+  push:
+    branches: [docs]
+    paths:
+      - 'apps/docs/**'
+      - '.github/workflows/docs.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Regenerar llm.md (empaquetado para IA)
+        run: cd apps/docs && bun run build-llm.ts
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'apps/docs'
+
+  deploy:
+    environment: github-pages
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

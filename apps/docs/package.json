@@ -1,0 +1,14 @@
+{
+  "name": "@supabase-kit/docs",
+  "module": "index.ts",
+  "peerDependencies": {},
+  "private": true,
+  "scripts": {
+    "dev": "bun run bunpack.watch.ts",
+    "build": "bun run bunpack.build.ts"
+  },
+  "type": "module",
+  "devDependencies": {
+    "docsify": "^4.13.1"
+  }
+}
