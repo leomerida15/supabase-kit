@@ -1,0 +1,33 @@
+version: "1.0"
+agent:
+  id: "cursor"
+  name: "Cursor"
+
+# La ruta base relativa donde el agente almacena su configuración local
+source_root: ".cursor/"
+
+# Definición de flujo bidireccional
+mapping:
+  # INBOUND: Desde el Agente hacia el Puente Universal .agents
+  inbound:
+    - from: "rules/"
+      to: "rules/"
+      format: "directory"
+    - from: "skills/"
+      to: "skills/"
+      format: "directory"
+    - from: "workflows/"
+      to: "workflows/"
+      format: "directory"
+
+  # OUTBOUND: Desde el Puente Universal .agents hacia el Agente
+  outbound:
+    - from: "rules/"
+      to: "rules/"
+    - from: "skills/"
+      to: "skills/"
+    - from: "workflows/"
+      to: "workflows/"
+
+# Carpeta de almacenamiento universal objetivo
+target_standard: ".agents/"
