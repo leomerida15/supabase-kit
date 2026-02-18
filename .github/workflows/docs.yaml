@@ -1,7 +1,7 @@
 # Despliega la documentación (Docsify) en GitHub Pages
 # Repo: Settings → Pages → Source: GitHub Actions
 
-name: Deploy docs (Docsify)
+name: Deploy docs  (Docsify)
 
 on:
   push:
