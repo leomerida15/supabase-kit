@@ -1,0 +1,31 @@
+{
+  "manifest": {
+    "lastProcessedAt": 1771870645600,
+    "lastActiveAgent": "cursor",
+    "currentAgent": "cursor",
+    "agents": {
+      "cursor": {
+        "lastProcessedAt": 1771870645600
+      },
+      "antigravity": {
+        "lastProcessedAt": 0
+      }
+    }
+  },
+  "agents": [
+    {
+      "id": "cursor",
+      "name": "cursor",
+      "sourceRoot": ".cursor",
+      "inbound": [],
+      "outbound": []
+    },
+    {
+      "id": "antigravity",
+      "name": "antigravity",
+      "sourceRoot": "/home/snor/.gemini/antigravity",
+      "inbound": [],
+      "outbound": []
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+version: "1.0"
+agent:
+  id: "cursor"
+  name: "Cursor"
+
+# Rutas del agente: workspace (detección/sync) y home (config global)
+paths:
+  - path: ".cursor/"
+    scope: "workspace"
+    type: "directory"
+    purpose: "marker"
+  - path: ".cursor"
+    scope: "home"
+    type: "directory"
+    purpose: "config"
+
+# Definición de flujo bidireccional
+mapping:
+  # INBOUND: Desde el Agente hacia el Puente Universal .agents
+  inbound:
+    - from: "rules/"
+      to: "rules/"
+      format: "directory"
+      source_ext: ".mdc"
+      target_ext: ".md"
+    - from: "skills/"
+      to: "skills/"
+      format: "directory"
+    - from: "workflows/"
+      to: "workflows/"
+      format: "directory"
+    # Cursor: .cursor/mcp.json (workspace) → .agents/mcp/
+    - from: "mcp.json"
+      to: "mcp.json"
+      format: "json"
+
+  # OUTBOUND: Desde el Puente Universal .agents hacia el Agente
+  outbound:
+    - from: "rules/"
+      to: "rules/"
+      format: "directory"
+      source_ext: ".md"
+      target_ext: ".mdc"
+    - from: "skills/"
+      to: "skills/"
+    - from: "workflows/"
+      to: "workflows/"
+      format: "directory"
+    # .agents/mcp/ → Cursor (.cursor/mcp.json)
+    - from: "mcp.json"
+      to: "mcp.json"
+      format: "json"
+
+# Carpeta de almacenamiento universal objetivo
+target_standard: ".agents/"

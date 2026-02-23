@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
 import { DatabaseTemp } from './query';
 import { createSupabaseQuery } from './query/createSupabaseQuery';
 import { createSupabaseSubscription } from './subscription/createSupabaseSubscription';
@@ -18,8 +18,19 @@ export const createSupabaseTools = <D extends DatabaseTemp = any>(client: Supaba
      * The initial data is `null`.
      */
     const useSupaSession = () => {
+        const queryClient = useQueryClient();
+
+        useEffect(() => {
+          const {
+            data: { subscription },
+          } = client.auth.onAuthStateChange(() => {
+            queryClient.invalidateQueries({ queryKey: ['supa_session'] });
+          });
+          return () => subscription.unsubscribe();
+        }, [queryClient]);
+
         return useQuery({
-            queryKey: ['supa_session', client],
+            queryKey: ['supa_session'],
             initialData: null,
             queryFn: async () => {
                 const { data, error } = await client.auth.getSession();
@@ -28,7 +39,6 @@ export const createSupabaseTools = <D extends DatabaseTemp = any>(client: Supaba
             },
         });
     };
-
     const SupabaseQuery = createSupabaseQuery(client);
 
     const SupabaseSubscription = createSupabaseSubscription(client, SupabaseQuery.useSupaQuery);
